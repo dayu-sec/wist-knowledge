@@ -57,10 +57,26 @@ CI 把两个仓都 checkout 成网关仓的同级目录（见 `wist-gateway/.git
 签的是 **sha256 摘要的十六进制文本**（与 `.sha256` 里那串同一段字节），Ed25519，base64 一行。
 私钥**只在** CI secret `KNOWLEDGE_SIGNING_KEY`，不进仓、不进网关；网关侧只配公钥。
 
+**当前生效的签名公钥就在本仓**：`keys/knowledge-signing.pub.pem`（公钥是公开信息）。
+部署侧拿它去配网关（`[knowledge] signing_public_key_file`），任何人都能拿它**本地复核**一个包：
+
+```bash
+# 拿 release 附件与仓库里的公钥，手工验一遍（不依赖网关）。
+# 注意 `tr -d '\n'`：签名时用的是 `printf '%s'`（**不带换行**），awk/echo 会多补一个换行就验不过了。
+awk '{print $1}' wist-knowledge-<版本>.tar.gz.sha256 | tr -d '\n' > /tmp/msg
+base64 -d < wist-knowledge-<版本>.tar.gz.sig > /tmp/sig.bin
+openssl pkeyutl -verify -pubin -inkey keys/knowledge-signing.pub.pem \
+  -rawin -in /tmp/msg -sigfile /tmp/sig.bin                            # → Signature Verified Successfully
+```
+
+换钥匙（很少发生）：重跑 `gen-signing-key.sh` → 私钥更新 secret → **新公钥入库替换 `keys/`** →
+各网关换掉那份公钥文件并重启。**换锚要挨个动网关**，所以别轻易换。
+
 ```bash
 ./scripts/gen-signing-key.sh ./keys      # 只需一次：生成一对钥匙
 #  私钥 → GitHub secret KNOWLEDGE_SIGNING_KEY（内容 = 整个 PEM）
-#  公钥 → 可入库/可公开；部署侧拷成 <网关配置目录>/state/knowledge-signing.pub.pem
+#  公钥 → 入库为 keys/knowledge-signing.pub.pem（可公开）
+#         部署侧拷成 <网关配置目录>/state/knowledge-signing.pub.pem，
 #         并在 wist-gateway.toml 里写 [knowledge] signing_public_key_file = "state/knowledge-signing.pub.pem"
 ```
 

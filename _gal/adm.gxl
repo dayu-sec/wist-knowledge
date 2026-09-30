@@ -11,8 +11,6 @@ mod main   : lib_ver_adm {
   flow _entry : ver.use {
   }
 
-#[auto_load(exit)]
-  flow _set_ver | ver.syn_file {
-    SYN_FILE= "${ENV_ROOT}/Cargo.toml";
-  }
+  // 没有 `flow _set_ver | ver.syn_file`：本仓没有 Cargo.toml 之类要跟着版本走的文件
+  // —— 版本权威就是 `version.txt` 本身（tag 与它同名），没有什么可同步的。
 }

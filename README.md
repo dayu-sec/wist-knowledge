@@ -50,6 +50,22 @@ CI 把两个仓都 checkout 成网关仓的同级目录（见 `wist-gateway/.git
 - `wist-knowledge-<version>.tar.gz` —— 顶层一层同名目录，内含五份数据 + `manifest.json`
   （`version` / `created_at` / `commit` / `content_versions` / 每份文件的 sha256）
 - `wist-knowledge-<version>.tar.gz.sha256`
+- `wist-knowledge-<version>.tar.gz.sig` —— **仅在 CI secret `KNOWLEDGE_SIGNING_KEY` 配了时**产出
+
+### 签名（一把钥匙，与安装脚本那套同一简单度）
+
+签的是 **sha256 摘要的十六进制文本**（与 `.sha256` 里那串同一段字节），Ed25519，base64 一行。
+私钥**只在** CI secret `KNOWLEDGE_SIGNING_KEY`，不进仓、不进网关；网关侧只配公钥。
+
+```bash
+./scripts/gen-signing-key.sh ./keys      # 只需一次：生成一对钥匙
+#  私钥 → GitHub secret KNOWLEDGE_SIGNING_KEY（内容 = 整个 PEM）
+#  公钥 → 可入库/可公开；部署侧拷成 <网关配置目录>/state/knowledge-signing.pub.pem
+#         并在 wist-gateway.toml 里写 [knowledge] signing_public_key_file = "state/knowledge-signing.pub.pem"
+```
+
+配了公钥的网关会**拒收未签名/验不过**的包；没配就只记 sha256。
+私钥丢了 = 以后的新包都签不出来（要重生成并到**每台**网关换公钥）—— 所以把它存在只有发布流程能取到的地方。
 
 本地预览与自测：`./scripts/package.sh --dry-run`（版本取自 `version.txt`；显式传 `--version` 必须与它
 **完全相同**，否则拒掉——防“打了 tag 却忘了 bump”的漂移）。

@@ -18,7 +18,18 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Package knowledge
-        run: ./scripts/package.sh --version "${GITHUB_REF_NAME#v}" --out dist
+        env:
+          # 发布侧私钥（只在 CI secret 里）。没配就产出**未签名**包 —— 配了验签公钥的网关会拒收。
+          KNOWLEDGE_SIGNING_KEY_PEM: ${{ secrets.KNOWLEDGE_SIGNING_KEY }}
+        run: |
+          set -eu
+          if [ -n "${KNOWLEDGE_SIGNING_KEY_PEM}" ]; then
+            printf '%s\n' "${KNOWLEDGE_SIGNING_KEY_PEM}" > "${RUNNER_TEMP}/knowledge-signing.pkcs8.pem"
+            export KNOWLEDGE_SIGNING_KEY="${RUNNER_TEMP}/knowledge-signing.pkcs8.pem"
+          else
+            echo "::warning::KNOWLEDGE_SIGNING_KEY 未配置 —— 本次发布的包**没有签名**"
+          fi
+          ./scripts/package.sh --version "${GITHUB_REF_NAME#v}" --out dist
 
       - uses: actions/upload-artifact@v7
         with:

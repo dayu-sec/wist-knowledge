@@ -14,6 +14,7 @@
 # 产物：
 #   <out>/wist-knowledge-<version>.tar.gz          顶层一层同名目录
 #   <out>/wist-knowledge-<version>.tar.gz.sha256
+#   <out>/wist-knowledge-<version>.tar.gz.sig      仅在 KNOWLEDGE_SIGNING_KEY 给定时产出
 #
 # 本仓按**组件**发布（不是制品）：只在 `main` 开发与发布，tag = `v<version.txt>`，无通道后缀。
 # 真正的发布走 `.github/workflows/release.yml`（打 tag 触发）；本地用 `--dry-run` 预览。
@@ -77,6 +78,11 @@ if [[ "${DRY_RUN}" -eq 1 ]]; then
   echo "  内容        ${KNOWLEDGE_FILES[*]} + manifest.json"
   echo "  产物        ${TARBALL}"
   echo "              ${TARBALL}.sha256"
+  if [[ -n "${KNOWLEDGE_SIGNING_KEY:-}" ]]; then
+    echo "              ${TARBALL}.sig（会用 ${KNOWLEDGE_SIGNING_KEY} 签）"
+  else
+    echo "  签名        无（KNOWLEDGE_SIGNING_KEY 未设置）"
+  fi
   exit 0
 fi
 
@@ -153,12 +159,33 @@ print(f"  manifest.json  content_versions={content_versions} commit={commit or '
 PY
 
 mkdir -p "${OUT}"
-rm -f "${TARBALL}" "${TARBALL}.sha256"
+rm -f "${TARBALL}" "${TARBALL}.sha256" "${TARBALL}.sig"
 # `-C STAGE` + 相对目录名：包内第一段就是 `<名字>-<版本>`（与安装包同一约定）。
 tar -czf "${TARBALL}" -C "${STAGE}" "${PACKAGE}"
-sha256_of "${TARBALL}" > "${TARBALL}.sha256.tmp"
-printf '%s  %s\n' "$(cat "${TARBALL}.sha256.tmp")" "$(basename "${TARBALL}")" > "${TARBALL}.sha256"
-rm -f "${TARBALL}.sha256.tmp"
+SHA="$(sha256_of "${TARBALL}")"
+printf '%s  %s\n' "${SHA}" "$(basename "${TARBALL}")" > "${TARBALL}.sha256"
+
+# 签名（设计 §9）：一把 Ed25519 私钥，签的是**摘要的十六进制文本**（与 `.sha256` 里那串同一段
+# 字节）——运维拿 openssl 能手工重验。私钥只放 CI secret（`KNOWLEDGE_SIGNING_KEY`），不进仓、
+# 不进网关；网关侧只配公钥。与安装脚本那把签名同一简单度：不做多密钥共存。
+if [[ -n "${KNOWLEDGE_SIGNING_KEY:-}" ]]; then
+  msg="$(mktemp)"
+  sig="$(mktemp)"
+  printf '%s' "${SHA}" > "${msg}"
+  if ! openssl pkeyutl -sign -rawin -inkey "${KNOWLEDGE_SIGNING_KEY}" -in "${msg}" -out "${sig}" >/dev/null 2>&1; then
+    rm -f "${msg}" "${sig}"
+    echo "签名失败：需要 OpenSSL ≥ 3.0 做 Ed25519 原始签名（本机：$(openssl version 2>/dev/null || echo 未找到 openssl)）。" >&2
+    echo "  发布请走 CI（.github/workflows/release.yml 用 secret 签）；本地要签请装真 openssl。" >&2
+    exit 1
+  fi
+  base64 < "${sig}" | tr -d '\n' > "${TARBALL}.sig"
+  printf '\n' >> "${TARBALL}.sig"
+  rm -f "${msg}" "${sig}"
+  echo "  签名      $(basename "${TARBALL}").sig（Ed25519，签的就是上面那串 sha256）"
+else
+  echo "  签名      无（KNOWLEDGE_SIGNING_KEY 未设置）"
+  echo "            → 配了验签公钥的网关会拒收这份包；正式发布请走 CI（secret 已配）"
+fi
 
 echo "已打包 → ${TARBALL}"
 echo "  顶层目录  ${PACKAGE}/"

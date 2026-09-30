@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# 把知识库打成可下载的**制品**：`wist-knowledge-<version>.tar.gz`
+# 把知识库打包成可下载的制品：`wist-knowledge-<version>.tar.gz`
 #
-# 为什么打成包：网关侧按**制品**消费（形态对齐既有「Agent 安装包」——管理面录入 / 离线投放 /
+# 为什么打成包：网关侧按**包**消费（形态对齐既有「Agent 安装包」——管理面录入 / 离线投放 /
 # 版本历史 / 内容寻址），而不是让网关去读本仓的目录结构。包名与顶层目录名都带版本，
 # 与安装包同一约定（`<名字>-<版本>`，见 wist-gateway `api/install_package.rs`）。
 #
 # 用法：
 #   ./scripts/package.sh                        # 版本取自 version.txt
-#   ./scripts/package.sh --version 0.1.0-alpha
+#   ./scripts/package.sh --version 0.1.1
 #   ./scripts/package.sh --out dist
 #   ./scripts/package.sh --dry-run              # 只打印会做什么，不落盘
 #
@@ -15,7 +15,8 @@
 #   <out>/wist-knowledge-<version>.tar.gz          顶层一层同名目录
 #   <out>/wist-knowledge-<version>.tar.gz.sha256
 #
-# 真正的发布走 `.github/workflows/release.yml`（打 tag 触发，tag 名即版本）。
+# 本仓按**组件**发布（不是制品）：只在 `main` 开发与发布，tag = `v<version.txt>`，无通道后缀。
+# 真正的发布走 `.github/workflows/release.yml`（打 tag 触发）；本地用 `--dry-run` 预览。
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -38,25 +39,20 @@ done
 
 # version.txt 是版本权威（`gx adm v_patch` / `v_feat` 改的就是它）。tag 与它不一致，
 # 说明「先打了 tag、却忘了 bump」，这种漂移要在发布口拦住。
-# version.txt 是版本权威（`gx adm v_patch` / `v_feat` 改的就是它）。制品 tag 在基版本上带通道后缀
-# （`-alpha` / `-beta`，见 `_gal/vfm.gxl` 的 `tag_alpha` / `tag_beta`），所以合法形态就是
-# `<基版本>` 或 `<基版本>-*`。对不上说明「先打了 tag、却忘了 bump」，这种漂移要在发布口拦住。
+# version.txt 是版本权威（`gx adm v_patch` / `v_feat` 改的就是它）。本仓按**组件**走：
+# 只在 `main` 开发与发布，tag 就是 `v<version.txt>`（没有 `-alpha` / `-beta` 通道后缀 —— 那是制品）。
+# 对不上说明「先打了 tag、却忘了 bump」，这种漂移要在发布口拦住。
 FILE_VERSION=""
 if [[ -f "${ROOT}/version.txt" ]]; then
   FILE_VERSION="$(tr -d '[:space:]' < "${ROOT}/version.txt")"
 fi
 [[ -n "${VERSION}" ]] || VERSION="${FILE_VERSION}"
 [[ -n "${VERSION}" ]] || { echo "版本为空：version.txt 缺失或为空，用 --version 指定" >&2; exit 2; }
-if [[ -n "${FILE_VERSION}" ]]; then
-  case "${VERSION}" in
-    "${FILE_VERSION}" | "${FILE_VERSION}-"*) ;;
-    *)
-      echo "版本不一致：tag/参数是 ${VERSION}，version.txt 是 ${FILE_VERSION}" >&2
-      echo "  合法形态：${FILE_VERSION} 或 ${FILE_VERSION}-alpha / -beta 这类通道后缀。" >&2
-      echo "  先 bump version.txt（gx adm v_patch / v_feat），再打对应 tag。" >&2
-      exit 2
-      ;;
-  esac
+if [[ -n "${FILE_VERSION}" && "${VERSION}" != "${FILE_VERSION}" ]]; then
+  echo "版本不一致：tag/参数是 ${VERSION}，version.txt 是 ${FILE_VERSION}" >&2
+  echo "  本仓按组件发布：tag 就是 v${FILE_VERSION}（不带通道后缀）。" >&2
+  echo "  先 bump version.txt（gx adm v_patch / v_feat），再打对应 tag。" >&2
+  exit 2
 fi
 
 for name in "${KNOWLEDGE_FILES[@]}"; do

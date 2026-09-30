@@ -33,12 +33,15 @@ wist 的**知识库**——网关装载后用于：采集单元 / 包 / 工作�
 定位：`WIST_DESIGN_DIR` 优先，否则 `<网关仓>/../wist-design`（本地开发仓组里它在上一级）。
 CI 把两个仓都 checkout 成网关仓的同级目录（见 `wist-gateway/.github/workflows/build-and-test.yml`）。
 
-## 制品与发布
+## 发布
 
-**打 tag 即出可下载制品**（`.github/workflows/release.yml`，tag `v*.*.*` 触发）：
+本仓按**组件**走（不是制品）：只在 `main` 开发与发布，**tag 就是 `v<version>`，不带 `-alpha` / `-beta` 通道后缀**。
+（制品的通道后缀见 `wist-gateway` / `wist-agentd` 那类仓。）
+
+**打 tag 即出可下载包**（`.github/workflows/release.yml`，tag `v*.*.*` 触发）：
 
 1. bump `version.txt`（版本权威；gx 仓里就是 `gx adm v_patch` / `v_feat`）→ commit / push
-2. 打 tag 并推送：`v<version>`，制品通道加后缀（`v0.1.0-alpha` / `-beta`；gx 仓里就是 `gx adm tag_alpha` / `tag_beta`）
+2. 打 tag 并推送：`v<version>`（gx 仓里是 `gx adm v_tag`）
 
 产物（GitHub Release 附件 + workflow artifact，保留 7 天）：
 
@@ -46,9 +49,9 @@ CI 把两个仓都 checkout 成网关仓的同级目录（见 `wist-gateway/.git
   （`version` / `created_at` / `commit` / `content_versions` / 每份文件的 sha256）
 - `wist-knowledge-<version>.tar.gz.sha256`
 
-本地预览与自测：`./scripts/package.sh --dry-run`（版本取自 `version.txt`；显式传 `--version` 只接受
-`version.txt` 本身或 `<它>-alpha` / `-beta` 这类通道后缀，否则拒掉——防“打了 tag 却忘了 bump”的漂移）。
+本地预览与自测：`./scripts/package.sh --dry-run`（版本取自 `version.txt`；显式传 `--version` 必须与它
+**完全相同**，否则拒掉——防“打了 tag 却忘了 bump”的漂移）。
 
-为什么打成制品、而不是让网关读本仓目录：形态对齐既有「Agent 安装包」——管理面录入 / 离线投放 /
+为什么打成包、而不是让网关读本仓目录：形态对齐既有「Agent 安装包」——管理面录入 / 离线投放 /
 版本历史 / 内容寻址。**网关侧的导入流程还没做**（生效版本指针、签名、schema 兼容校验、旧版共存），
 见后续设计稿。

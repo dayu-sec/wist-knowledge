@@ -1,3 +1,4 @@
 .report
 .run*
 .DS_Store
+/dist

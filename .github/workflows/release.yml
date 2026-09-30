@@ -1,0 +1,53 @@
+name: Release
+
+# 打 tag 即发制品：`v0.1.0` / `v0.1.0-alpha` 都触发（预发布 tag 用后缀区分）。
+# 版本取自 tag 名（去 `v`），并与 `version.txt` 核对 —— 不一致直接失败（见 scripts/package.sh）。
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: Package
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Package knowledge
+        run: ./scripts/package.sh --version "${GITHUB_REF_NAME#v}" --out dist
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: wist-knowledge-${{ github.ref_name }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 7
+
+  release:
+    name: Release
+    needs: [package]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v8
+        with:
+          path: dist
+          pattern: wist-knowledge-*
+          merge-multiple: true
+
+      - name: Release
+        uses: softprops/action-gh-release@v3
+        with:
+          name: ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          generate_release_notes: true
+          files: dist/*

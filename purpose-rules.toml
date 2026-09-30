@@ -20,6 +20,11 @@
 # 权重口径：强特征 40（几乎决定性，如 postgres / nvidia-persistenced）
 #           中特征 30、弱特征 10~25
 #           日常类特征（Safari/Mail）在开发机上同样存在，只给弱权重
+#
+# 改内容必须 bump `purpose_version`：它是**归因锚** —— 建议里记的 `rule_set_id` 只说
+# “哪一册”，不说“哪一版”；只改值不改版本，就再也说不清“这条建议是哪版规则算的”
+# （网关侧见 docs/design/knowledge-content-management.md §8.2）。
+purpose_version = 1
 
 [[rule_set]]
 rule_set_id = "macos-v1"

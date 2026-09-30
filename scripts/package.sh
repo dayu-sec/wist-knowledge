@@ -124,6 +124,9 @@ if template_versions:
 policy_version = top_level(read("aspect-policies.toml"), "policy_version")
 if policy_version is not None:
     content_versions["policy_version"] = policy_version
+purpose_version = top_level(read("purpose-rules.toml"), "purpose_version")
+if purpose_version is not None:
+    content_versions["purpose_version"] = purpose_version
 
 try:
     commit = subprocess.run(

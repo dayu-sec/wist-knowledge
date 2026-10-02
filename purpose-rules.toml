@@ -24,7 +24,7 @@
 # 改内容必须 bump `purpose_version`：它是**归因锚** —— 建议里记的 `rule_set_id` 只说
 # “哪一册”，不说“哪一版”；只改值不改版本，就再也说不清“这条建议是哪版规则算的”
 # （网关侧见 docs/design/knowledge-content-management.md §8.2）。
-purpose_version = 1
+purpose_version = 2
 
 [[rule_set]]
 rule_set_id = "macos-v1"
@@ -165,9 +165,14 @@ pattern = "/Microsoft Word.app"
 machine_class = "MacDaily"
 weight = 10
 
+# Linux 也配了基线：compute/data 的规则都是**专有守护进程**（slurmd/kubelet/postgres…），
+# 一台普通服务器一条都不命中。没有基线它就没有建议 → 也就没人能采纳、更派不出工作
+# （采集链在“用途建议”这一步就断）。基线类别 `LinuxHost` 只挂 `linux-base`，
+# 不冒充计算/数据机（那会把没有的采集面也派下去）。
 [[rule_set]]
 rule_set_id = "linux-v1"
 platform = "linux"
+baseline_class = "LinuxHost"
 weak_score = 20
 min_support = 2
 published_at = "2026-09-22T00:00:00Z"

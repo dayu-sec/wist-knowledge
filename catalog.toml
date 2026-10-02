@@ -36,7 +36,7 @@
 # 采集就绪（能不能派下去把原文拿回来）与解析就绪（rule_ref）是**两个轴**，不互相卡：
 #   mac-reboot-power 就是“可采但解析未就绪”的样本（原文进得来，只会归在泛化的 agent.log 下）。
 
-catalog_version = 2
+catalog_version = 3
 origin = "Gateway"
 published_at = "2026-09-22T00:00:00Z"
 
@@ -534,9 +534,14 @@ family = "HostMetrics"
 capability = "collect_metrics"
 platform = "linux"
 match = ""
-rule_ref = ""
-requires_privilege = "root"
-status = "draft"
+# 与 `mac-host-metrics` 同一口径：指标帧由平台无关的 `agent_uplink` 包（`metrics_frame` 规则）承接
+# （数据面那个 OML 名字带 `macos_` 只是历史命名）；指标读 /proc、/sys，不需要提权。
+rule_ref = "agent_uplink"
+requires_privilege = "none"
+# 采集就绪：指标按 `MetricInterval` 周期采，agentd 今天就能执行（采原文不需要解析规则）。
+# Linux 侧**先只开这一个面** —— 派单闸门看「该面至少一个 active 单元」，没有它 Linux 机器
+# 一个常驻工作都派不出去（`linux-host` 模板因此现在可授权）。
+status = "active"
 
 [[units.sources]]
 kind = "MetricInterval"

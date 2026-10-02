@@ -15,7 +15,7 @@
 #   （其单元进 SelectionBasis.excluded_units，reason_code = collect_not_ready）。
 #   采集要素齐了就自动启用，**不用等解析规则** —— 即「部分可用 / 渐进启用」。
 #
-# 现状：4 个模板的策展状态都是 draft；即便如此，其中“采集已就绪的面”（如 HostMetrics、
+# 现状：5 个模板的策展状态都是 draft；即便如此，其中“采集已就绪的面”（如 HostMetrics、
 #   SoftwareChange、CrashPanic）也能单独授权发下去。
 
 [[template]]
@@ -23,7 +23,7 @@ template_id = "macos-daily"
 machine_class = "MacDaily"
 platform = "macos"
 pack_refs = ["macos-base"]
-catalog_version = 2
+catalog_version = 3
 template_version = 1
 status = "draft"
 curated_by = "platform-maintenance"
@@ -35,7 +35,7 @@ template_id = "macos-dev"
 machine_class = "MacDev"
 platform = "macos"
 pack_refs = ["macos-base", "macos-dev"]
-catalog_version = 2
+catalog_version = 3
 template_version = 1
 status = "draft"
 curated_by = "platform-maintenance"
@@ -46,7 +46,7 @@ template_id = "linux-compute"
 machine_class = "LinuxCompute"
 platform = "linux"
 pack_refs = ["linux-base", "linux-workload"]
-catalog_version = 2
+catalog_version = 3
 template_version = 1
 status = "draft"
 curated_by = "platform-maintenance"
@@ -58,7 +58,21 @@ template_id = "linux-data"
 machine_class = "LinuxData"
 platform = "linux"
 pack_refs = ["linux-base", "linux-workload", "linux-datastore", "linux-ops-extra"]
-catalog_version = 2
+catalog_version = 3
+template_version = 1
+status = "draft"
+curated_by = "platform-maintenance"
+curated_at = "2026-09-22T00:00:00Z"
+
+# 通用服务器 = **只有**公共基线，没有 compute/data 的专有面。它同时是 `linux-v1`
+# 无规则命中时的基线兜底类别（见 purpose-rules.toml）——普通 Linux（docker/nginx/… 这类）
+# 既不是计算机也不是数据机，给一面专有模板只会派下采不到的面。
+[[template]]
+template_id = "linux-host"
+machine_class = "LinuxHost"
+platform = "linux"
+pack_refs = ["linux-base"]
+catalog_version = 3
 template_version = 1
 status = "draft"
 curated_by = "platform-maintenance"

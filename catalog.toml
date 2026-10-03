@@ -19,6 +19,9 @@
 #
 # 现状（macOS）：5 个面可采（active）—— mac-software-change、mac-reboot-power、
 #   mac-network-wifi、mac-launchd-service、mac-host-metrics。
+# 现状（Linux）：5 个面可采 —— linux-auth-session、linux-privilege-exec、
+#   linux-software-change、linux-kernel-system、linux-host-metrics。判据同上：只有**显式绝对路径**
+#   （或 MetricInterval）的来源今天能 tail；靠 Exporter / 通配的 Linux 面仍不可执行。
 #
 # **轮转的文件族不要用通配写**（`wifi.log*` 是错写法）：通配会把轮转产物（`wifi.log.0`、
 #   `wifi.log.*.bz2`）也纳入采集范围，而那些是**历史**。正确写法是显式写当前那个文件
@@ -36,7 +39,7 @@
 # 采集就绪（能不能派下去把原文拿回来）与解析就绪（rule_ref）是**两个轴**，不互相卡：
 #   mac-reboot-power 就是“可采但解析未就绪”的样本（原文进得来，只会归在泛化的 agent.log 下）。
 
-catalog_version = 3
+catalog_version = 4
 origin = "Gateway"
 published_at = "2026-09-22T00:00:00Z"
 
@@ -259,7 +262,9 @@ platform = "linux"
 match = ""
 rule_ref = ""
 requires_privilege = "root"
-status = "draft"
+# 采集就绪：auth.log（Debian 系）/ secure（RHEL 系）是**显式路径**，agentd 今天就能 tail。
+# 原第三条 `wtmp` 已删 —— 它是 utmp **二进制**记录、不是文本日志，tail 它只会出乱码。
+status = "active"
 
 [[units.sources]]
 kind = "FileGlob"
@@ -268,10 +273,6 @@ target = "/var/log/auth.log"
 [[units.sources]]
 kind = "FileGlob"
 target = "/var/log/secure"
-
-[[units.sources]]
-kind = "FileGlob"
-target = "/var/log/wtmp"
 
 [[units]]
 unit_id = "linux-privilege-exec"
@@ -282,7 +283,8 @@ match = ""
 # sudo 触发行同时落在 secure/auth.log（由 linux-auth-session 采），这里只收命令级审计
 rule_ref = ""
 requires_privilege = "root"
-status = "draft"
+# 采集就绪：sudo.log 是显式路径（RHEL 系默认有；Debian 系需 sudoers 里配 `logfile`）。
+status = "active"
 
 [[units.sources]]
 kind = "FileGlob"
@@ -300,7 +302,8 @@ platform = "linux"
 match = ""
 rule_ref = ""
 requires_privilege = "root"
-status = "draft"
+# 采集就绪：dpkg（Debian）/ apt history、dnf、yum（RHEL）都是显式路径。
+status = "active"
 
 [[units.sources]]
 kind = "FileGlob"
@@ -416,7 +419,8 @@ platform = "linux"
 match = ""
 rule_ref = ""
 requires_privilege = "root"
-status = "draft"
+# 采集就绪：kern.log（Debian）/ messages（RHEL）都是显式路径。
+status = "active"
 
 [[units.sources]]
 kind = "FileGlob"

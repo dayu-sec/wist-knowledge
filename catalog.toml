@@ -41,9 +41,157 @@
 # 采集就绪（能不能派下去把原文拿回来）与解析就绪（rule_ref）是**两个轴**，不互相卡：
 #   mac-reboot-power 就是“可采但解析未就绪”的样本（原文进得来，只会归在泛化的 agent.log 下）。
 
-catalog_version = 5
+catalog_version = 6
 origin = "Gateway"
-published_at = "2026-09-22T00:00:00Z"
+published_at = "2026-10-18T00:00:00Z"
+
+# ── 采集面词表 ────────────────────────────────────────────────────
+#
+# 这是**运行期词表的唯一来源**（网关从包里装载，见
+# `doc/design/center/collection-family-capability-contract.md` §5.5）。
+#
+# 规矩（机器会验）：
+#   1. **只增不改名**：`id` 进数据帧、接口与历史数据，改名就是破坏性变更；
+#      改名 = 新建一个面 + 旧面保留（要改语义请提高 `semantics_version` 或新建面）。
+#   2. 网关激活时会做**追加式校验**：删掉已生效的面会被拒（`vocabulary_not_append_only`）。
+#   3. `platforms` 决定面与平台的对应；留空 = 全平台。
+#   4. `name_*` / `summary_*` 是**展示文案**（可自由改，不发版），`id` 不翻译。
+#   5. 与模型 `families.mju` 的一致性由 CI 校验。
+
+[[families]]
+id = "LoginSession"
+name_zh = "登录会话"
+name_en = "Login sessions"
+summary_zh = "登录、退出与会话，含认证事件。"
+summary_en = "Logins, logouts, and sessions, including authentication events."
+
+[[families]]
+id = "PrivilegeExecution"
+name_zh = "提权执行"
+name_en = "Privilege execution"
+summary_zh = "提权与命令执行。"
+summary_en = "Privilege escalation and command execution."
+
+[[families]]
+id = "SoftwareChange"
+name_zh = "软件变更"
+name_en = "Software changes"
+summary_zh = "系统与软件变更。"
+summary_en = "System and software changes."
+
+[[families]]
+id = "ServiceLifecycle"
+name_zh = "服务生命周期"
+name_en = "Service lifecycle"
+summary_zh = "服务生命周期（launchd / systemd）。"
+summary_en = "Service lifecycle events (launchd / systemd)."
+
+[[families]]
+id = "CrashPanic"
+name_zh = "崩溃与 Panic"
+name_en = "Crashes & panics"
+summary_zh = "应用崩溃与内核 panic。"
+summary_en = "Application crashes and kernel panics."
+
+[[families]]
+id = "NetworkFirewall"
+name_zh = "网络与防火墙"
+name_en = "Network & firewall"
+summary_zh = "网络、防火墙与 Wi-Fi。"
+summary_en = "Network, firewall, and Wi-Fi events."
+
+[[families]]
+id = "RebootPower"
+name_zh = "关机与重启"
+name_en = "Shutdown & reboot"
+summary_zh = "关机、重启与电源事件。"
+summary_en = "Shutdown, reboot, and power events."
+
+[[families]]
+id = "MiscSystem"
+name_zh = "系统杂项"
+name_en = "System misc"
+summary_zh = "系统杂项日志。"
+summary_en = "Miscellaneous system logs."
+
+[[families]]
+id = "HostMetrics"
+name_zh = "主机指标"
+name_en = "Host metrics"
+summary_zh = "主机负载、内存、磁盘与开机时长等指标。"
+summary_en = "Host metrics such as load, memory, disk, and uptime."
+
+[[families]]
+id = "PrivacyTcc"
+platforms = ["macos"]
+name_zh = "隐私与钥匙串"
+name_en = "Privacy & Keychain"
+summary_zh = "隐私授权（TCC）与 Keychain。"
+summary_en = "Privacy permissions (TCC) and Keychain."
+
+[[families]]
+id = "GatekeeperQuarantine"
+platforms = ["macos"]
+name_zh = "隔离来源"
+name_en = "Quarantine origins"
+summary_zh = "Gatekeeper 隔离来源。"
+summary_en = "Gatekeeper quarantine origins."
+
+[[families]]
+id = "DevToolchain"
+platforms = ["macos"]
+name_zh = "开发工具链"
+name_en = "Developer toolchain"
+summary_zh = "Homebrew、Xcode、容器、包管理器与 IDE 等开发工具链。"
+summary_en = "Developer toolchain such as Homebrew, Xcode, containers, package managers, and IDEs."
+
+[[families]]
+id = "KernelSystem"
+platforms = ["linux"]
+name_zh = "内核与系统日志"
+name_en = "Kernel & system logs"
+summary_zh = "内核与系统日志，含 OOM killer。"
+summary_en = "Kernel and system logs, including the OOM killer."
+
+[[families]]
+id = "DatabaseService"
+platforms = ["linux"]
+name_zh = "数据库服务"
+name_en = "Database services"
+summary_zh = "数据库服务日志。"
+summary_en = "Database service logs."
+
+[[families]]
+id = "StorageHealth"
+platforms = ["linux"]
+name_zh = "存储健康"
+name_en = "Storage health"
+summary_zh = "存储与文件系统健康（fsck / RAID / SMART / 容量）。"
+summary_en = "Storage and filesystem health (fsck / RAID / SMART / capacity)."
+
+[[families]]
+id = "ComputeWorkload"
+platforms = ["linux"]
+name_zh = "作业与加速卡"
+name_en = "Workloads & accelerators"
+summary_zh = "作业、调度与加速卡。"
+summary_en = "Jobs, schedulers, and accelerators."
+
+[[families]]
+id = "BackupJob"
+platforms = ["linux"]
+name_zh = "备份作业"
+name_en = "Backup jobs"
+summary_zh = "备份与批处理。"
+summary_en = "Backups and batch jobs."
+
+[[families]]
+id = "NetworkService"
+platforms = ["linux"]
+name_zh = "网络服务"
+name_en = "Network services"
+summary_zh = "网络服务（NFS / SMB / 防火墙规则）。"
+summary_en = "Network services (NFS / SMB / firewall rules)."
 
 # ── macOS ─────────────────────────────────────────────────────────
 

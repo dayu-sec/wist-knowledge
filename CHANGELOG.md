@@ -5,6 +5,29 @@
 
 > 说明：自 0.1.5 起维护本文件。
 
+## [0.3.0] - 2026-10-18
+
+### 变更
+
+- **`linux-privilege-exec` 拆成两个采集单元**（同一 `PrivilegeExecution` 面）：
+  - `linux-sudo-log`：来源 `/var/log/sudo.log`，`match = "path_exists:/var/log/sudo.log"`。
+    RHEL 系默认有这个文件，Debian 系需要 sudoers 里配 `logfile` —— 没有就不派，
+    避免「已授权却什么都没采到」。
+  - `linux-auditd-exec`：来源是导出器 `auditd-execve`，`match = ""`（导出器自己处理没装的情况）。
+    之前这两个来源混在同一个单元里，`match` 只能全有或全无。
+
+- **采集单元开始使用 `path_exists` 三态门控**：`match` 可用 `path_exists:<绝对路径>`，
+  探测范围由本文件的 `path_exists` 条件推导（网关下发给 agentd 实探）。
+  「没探测过」（无法判定）与「探测过不存在」（不满足）从此可区分。
+
+- `catalog_version` 6 → 7（目录 / 包 / 模板同步）。
+
+### 升级提示
+
+- **需要先升级网关（≥ 0.14.0）与 agentd（≥ 0.5.0）**：旧网关不认 `path_exists` 条件
+  （装载即拒），旧 agentd 不会探路径 —— 那时该单元会永远停在「无法判定」。
+  顺序：网关 → agentd → 本包 → 激活。
+
 ## [0.2.0] - 2026-10-18
 
 ### 新增

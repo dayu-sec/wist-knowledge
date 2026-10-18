@@ -42,7 +42,7 @@ unit_refs = [
   "mac-misc-system",
   "mac-host-metrics",
 ]
-catalog_version = 6
+catalog_version = 7
 status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-09-22T00:00:00Z"
@@ -56,7 +56,7 @@ unit_refs = [
   "mac-privilege-exec",
   "mac-dev-toolchain",
 ]
-catalog_version = 6
+catalog_version = 7
 status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-09-22T00:00:00Z"
@@ -81,7 +81,8 @@ families = [
 ]
 unit_refs = [
   "linux-auth-session",
-  "linux-privilege-exec",
+  "linux-sudo-log",
+  "linux-auditd-exec",
   "linux-software-change",
   "linux-service-lifecycle",
   "linux-crash-panic",
@@ -91,7 +92,7 @@ unit_refs = [
   "linux-storage-health",
   "linux-host-metrics",
 ]
-catalog_version = 6
+catalog_version = 7
 status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-09-22T00:00:00Z"
@@ -105,7 +106,7 @@ families = ["ComputeWorkload"]
 unit_refs = [
   "linux-compute-workload",
 ]
-catalog_version = 6
+catalog_version = 7
 status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-09-22T00:00:00Z"
@@ -119,7 +120,7 @@ unit_refs = [
   "linux-db-service",
   "linux-backup-job",
 ]
-catalog_version = 6
+catalog_version = 7
 status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-09-22T00:00:00Z"
@@ -133,7 +134,7 @@ unit_refs = [
   "linux-misc-system",
   "linux-network-service",
 ]
-catalog_version = 6
+catalog_version = 7
 status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-09-22T00:00:00Z"

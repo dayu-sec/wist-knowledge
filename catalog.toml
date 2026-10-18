@@ -9,7 +9,10 @@
 #     multiline = none           一行一条（默认）
 #                 indented       行首缩进/制表符是上一条的续行（拟一整个多行记录上送）
 #     一个单元可有多来源；`glob:A|B` 这种在一个串里塞多路径的写法已拆成多条来源。
-#   match：装了什么/跑了什么才采；空 = 平台基线必采（三态求值，见模型 CollectionUnit.match）
+#   match：装了什么 / 跑了什么 / **哪个路径在不在**才采；空 = 平台基线必采（三态求值，
+#          「没探测过」≠「不存在」，见模型 CollectionUnit.match）。
+#          可用 kind：installed | port | path_exists（**绝对路径**；agentd 按网关下发的
+#          白名单实探，探测范围由本文件的 path_exists 条件推导）。
 #   rule_ref：数据面 rule/oml 标识 —— **解析就绪度**：非空 = 有规则，采下来的记录能被归类、
 #            抽字段；空 = 只落原文（帧照进、记录照落，只是都归在泛化的 agent.log 下）。
 #            **它不是采集闸门** —— 采原文不需要任何规则，规则是数据面的事。
@@ -19,10 +22,11 @@
 #
 # 现状（macOS）：5 个面可采（active）—— mac-software-change、mac-reboot-power、
 #   mac-network-wifi、mac-launchd-service、mac-host-metrics。
-# 现状（Linux）：10 个面可采 —— 4 个显式路径日志面（auth/secure、sudo.log、dpkg/apt/dnf/yum、
-#   kern.log/messages）+ 4 个**导出器**面（ServiceLifecycle/CrashPanic/NetworkFirewall/RebootPower/
-#   StorageHealth）+ 指标面。判据：来源要么是**显式绝对路径**（或 MetricInterval），要么是**已知导出器
-#   ID**（见 `wist-contracts::work::EXPORTER_IDS`）；靠**通配**的来源（coredump、`fsck*`、DB/备份/
+# 现状（Linux）：10 个面可采 —— 3 个无条件路径日志面（auth/secure、dpkg/apt/dnf/yum、
+#   kern.log/messages）+ sudo.log（path_exists 门控：文件存在才派）+ 4 个**导出器**面
+#   （ServiceLifecycle/CrashPanic/NetworkFirewall/RebootPower/StorageHealth）+ 指标面。
+#   判据：来源要么是**显式绝对路径**（或 MetricInterval），要么是**已知导出器 ID**
+#   （见 `wist-contracts::work::EXPORTER_IDS`）；靠**通配**的来源（coredump、`fsck*`、DB/备份/
 #   服务日志）仍不可执行。
 #
 # **轮转的文件族不要用通配写**（`wifi.log*` 是错写法）：通配会把轮转产物（`wifi.log.0`、
@@ -41,7 +45,7 @@
 # 采集就绪（能不能派下去把原文拿回来）与解析就绪（rule_ref）是**两个轴**，不互相卡：
 #   mac-reboot-power 就是“可采但解析未就绪”的样本（原文进得来，只会归在泛化的 agent.log 下）。
 
-catalog_version = 6
+catalog_version = 7
 origin = "Gateway"
 published_at = "2026-10-18T00:00:00Z"
 
@@ -425,20 +429,32 @@ kind = "FileGlob"
 target = "/var/log/secure"
 
 [[units]]
-unit_id = "linux-privilege-exec"
+unit_id = "linux-sudo-log"
 family = "PrivilegeExecution"
 capability = "collect_logs"
 platform = "linux"
-match = ""
-# sudo 触发行同时落在 secure/auth.log（由 linux-auth-session 采），这里只收命令级审计
+# sudo 触发行同时落在 secure/auth.log（由 linux-auth-session 采），这里只收命令级审计。
+# 文件门控：RHEL 系默认有 sudo.log，Debian 系需要 sudoers 里配 `logfile` ——
+# 没有这个文件就不派，避免对一个不存在的路径空转（也避免“已授权却什么都没采到”）。
+match = "path_exists:/var/log/sudo.log"
 rule_ref = ""
 requires_privilege = "root"
-# 采集就绪：sudo.log 是显式路径（RHEL 系默认有；Debian 系需 sudoers 里配 `logfile`）。
 status = "active"
 
 [[units.sources]]
 kind = "FileGlob"
 target = "/var/log/sudo.log"
+
+[[units]]
+unit_id = "linux-auditd-exec"
+family = "PrivilegeExecution"
+capability = "collect_logs"
+platform = "linux"
+# 导出器能不能跑由它自己决定（auditd 没装就是空结果），不靠路径门控。
+match = ""
+rule_ref = ""
+requires_privilege = "root"
+status = "active"
 
 [[units.sources]]
 kind = "Exporter"

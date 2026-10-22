@@ -22,9 +22,10 @@
 #
 # 现状（macOS）：5 个面可采（active）—— mac-software-change、mac-reboot-power、
 #   mac-network-wifi、mac-launchd-service、mac-host-metrics。
-# 现状（Linux）：10 个面可采 —— 3 个无条件路径日志面（auth/secure、dpkg/apt/dnf/yum、
-#   kern.log/messages）+ sudo.log（path_exists 门控：文件存在才派）+ 4 个**导出器**面
+# 现状（Linux）：10 个面可采 —— 5 个**显式路径**日志面（auth/secure、sudo.log、
+#   dpkg/apt/dnf/yum、kern.log/messages、audit.log）+ 4 个**导出器**面
 #   （ServiceLifecycle/CrashPanic/NetworkFirewall/RebootPower/StorageHealth）+ 指标面。
+#   audit.log 是整文件跟尾：**不按 type= 丢行**，8 个 host_audit_* 由数据面按 type= 分派。
 #   判据：来源要么是**显式绝对路径**（或 MetricInterval），要么是**已知导出器 ID**
 #   （见 `wist-contracts::work::EXPORTER_IDS`）；靠**通配**的来源（coredump、`fsck*`、DB/备份/
 #   服务日志）仍不可执行。
@@ -40,14 +41,14 @@
 #      wist-agentd/docs/design/log-file-input-spec.md §2；
 #   ② **目录型**（目录下多个各自独立的文件、各自还轮转，如 `cups/*` / `apache2/*` /
 #      `~/Library/Logs/Homebrew/*`）：一条显式路径表达不了，得先定“目录 + 过滤”的写法；
-#   ③ **来源类型未实现**（Exporter / UnifiedLogPredicate）。
+#   ③ **来源类型未实现**（UnifiedLogPredicate）。
 #
 # 采集就绪（能不能派下去把原文拿回来）与解析就绪（rule_ref）是**两个轴**，不互相卡：
 #   mac-reboot-power 就是“可采但解析未就绪”的样本（原文进得来，只会归在泛化的 agent.log 下）。
 
-catalog_version = 7
+catalog_version = 8
 origin = "Gateway"
-published_at = "2026-10-18T00:00:00Z"
+published_at = "2026-10-22T00:00:00Z"
 
 # ── 采集面词表 ────────────────────────────────────────────────────
 #
@@ -413,7 +414,9 @@ unit_id = "linux-auth-session"
 family = "LoginSession"
 capability = "collect_logs"
 platform = "linux"
-match = ""
+# 两条路径是二选一：哪个存在采哪个。门控防「两个都不存在时还派一份空活」。
+# 不存在的单条来源由网关派活时按探测事实裁掉（见 work.rs::materialize_spec）。
+match = "path_exists:/var/log/auth.log|/var/log/secure"
 rule_ref = ""
 requires_privilege = "root"
 # 采集就绪：auth.log（Debian 系）/ secure（RHEL 系）是**显式路径**，agentd 今天就能 tail。
@@ -446,19 +449,20 @@ kind = "FileGlob"
 target = "/var/log/sudo.log"
 
 [[units]]
-unit_id = "linux-auditd-exec"
+unit_id = "linux-audit-log"
 family = "PrivilegeExecution"
 capability = "collect_logs"
 platform = "linux"
-# 导出器能不能跑由它自己决定（auditd 没装就是空结果），不靠路径门控。
-match = ""
+# 整文件跟尾：**不按 type= 丢行**（无专用规则的 type= 也要出，解析交给数据面）。
+# 8 个 host_audit_* 由数据面按 type= 分派；这里不拆单元 —— 同一文件拆多个单元会重复读。
+match = "path_exists:/var/log/audit/audit.log"
 rule_ref = ""
 requires_privilege = "root"
 status = "active"
 
 [[units.sources]]
-kind = "Exporter"
-target = "auditd-execve"
+kind = "FileGlob"
+target = "/var/log/audit/audit.log"
 
 [[units]]
 unit_id = "linux-software-change"

@@ -5,6 +5,24 @@
 
 > 说明：自 0.1.5 起维护本文件。
 
+## [0.4.0] - 2026-10-22
+
+### 变更
+
+- **`linux-auditd-exec` → `linux-audit-log`**：来源从导出器 `auditd-execve` 换成整文件
+  `/var/log/audit/audit.log`（`match = "path_exists:/var/log/audit/audit.log"`）。
+  8 个 `host_audit_*` 由数据面按 `type=` 分派，采集端不按 type 丢行；避免同一批 EXECVE
+  从文件和 `ausearch` 两路重复。`auditd-execve` 导出器 ID 仍保留在词表，但目录不再引用。
+- **`linux-auth-session` 增加 `path_exists:/var/log/auth.log|/var/log/secure` 门控**：
+  两条路径都不存在的机器不再派空活；单条不存在的路径由网关派活时按探测事实裁掉。
+- `catalog_version` 7 → 8（目录 / 包 / 模板同步）。
+
+### 升级提示
+
+- 建议先升级到带「按探测事实裁剪来源」的网关；旧网关仍会把不存在的路径当来源下发，
+  该 input 每轮报一次 `ProcessingFailed`（不丢数据，但会持续报错）。
+- 旧 agentd 不受影响：`audit.log` 是显式路径，`FileGlob` 本来就能 tail。
+
 ## [0.3.0] - 2026-10-18
 
 ### 变更

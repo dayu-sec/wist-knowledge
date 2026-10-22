@@ -26,21 +26,27 @@
 #   dpkg/apt/dnf/yum、kern.log/messages、audit.log）+ 4 个**导出器**面
 #   （ServiceLifecycle/CrashPanic/NetworkFirewall/RebootPower/StorageHealth）+ 指标面。
 #   audit.log 是整文件跟尾：**不按 type= 丢行**，8 个 host_audit_* 由数据面按 type= 分派。
-#   判据：来源要么是**显式绝对路径**（或 MetricInterval），要么是**已知导出器 ID**
-#   （见 `wist-contracts::work::EXPORTER_IDS`）；靠**通配**的来源（coredump、`fsck*`、DB/备份/
-#   服务日志）仍不可执行。
+#   判据（W1 起）：`FileGlob` 的目标是**绝对路径** —— 显式单文件，或**单层 glob/目录**
+#   （`*` 不跨目录，`**` 不支持）—— 或 `MetricInterval`；`Exporter` 用**已知导出器 ID**
+#   （见 `wist-contracts::work::EXPORTER_IDS`）。`~` 与相对路径永远不可执行。
 #
-# **轮转的文件族不要用通配写**（`wifi.log*` 是错写法）：通配会把轮转产物（`wifi.log.0`、
-#   `wifi.log.*.bz2`）也纳入采集范围，而那些是**历史**。正确写法是显式写当前那个文件
-#   （`/var/log/wifi.log`）：轮转由采集器按 **inode** 跟踪 —— 文件被改名后只把尾巴读完，
-#   再跟到新文件；“轮转产物不当独立对象采”因此自动成立，也不靠任何后缀过滤规则。
+# 单层 glob **已可执行**，但不要因此把靠通配的单元直接翻 active：机队里仍有不认识 glob 的
+# 旧 agentd（它们会如实报 unsupported）。按 `linux-server-log-coverage-plan.md` D7 的发布纪律，
+# 先让机队升级并验证，再单独发一版目录翻 active。
+#
+# **单文件轮转的不要用通配写**（`wifi.log*` 是错写法）：通配会把轮转产物（`wifi.log.0`、
+#   `wifi.log.*.bz2`）也纳入匹配集。正确写法是显式写当前那个文件（`/var/log/wifi.log`）：
+#   轮转由采集器按 **inode** 跟踪 —— 文件被改名后只把尾巴读完，再跟到新文件；
+#   “轮转产物不当独立对象采”因此自动成立，也不靠任何后缀过滤规则。
+#   目录型/文件族的来源确实需要通配时，用 `exclude_globs`（绝对路径 glob，按**展开后的完整
+#   路径**匹配）把归档产物（如 `*.gz`）剔掉。
 #
 # 仍需新能力才能采的面（都不是“缺解析规则”）：
-#   ① **事件型**（每个文件 = 一条独立事件，如 `*.ips`）：要通配展开，**还要**“运行中新发现的
-#      文件从头读”（glossary §9.12 `discovered_file_position`）—— 两者是一对，见
-#      wist-agentd/docs/design/log-file-input-spec.md §2；
+#   ① **事件型**（每个文件 = 一条独立事件，如 `*.ips`）：W1 已能展开 glob，且“运行中新发现的
+#      文件从头读”（glossary §9.12 `discovered_file_position`）也随 W1 落地；
 #   ② **目录型**（目录下多个各自独立的文件、各自还轮转，如 `cups/*` / `apache2/*` /
-#      `~/Library/Logs/Homebrew/*`）：一条显式路径表达不了，得先定“目录 + 过滤”的写法；
+#      `~/Library/Logs/Homebrew/*`）：W1 的目录目标 + `exclude_globs` 已能表达（`~/...` 仍需
+#      改写成绝对路径）；
 #   ③ **来源类型未实现**（UnifiedLogPredicate）。
 #
 # 采集就绪（能不能派下去把原文拿回来）与解析就绪（rule_ref）是**两个轴**，不互相卡：
@@ -293,8 +299,9 @@ platform = "macos"
 match = ""
 rule_ref = ""
 requires_privilege = "root"
-# 可采：显式路径（不带星号）。**不要写 `wifi.log*`** —— 那会把轮转产物（`wifi.log.0`、
-# `wifi.log.*.bz2`）当成采集对象，而它们是历史。采集端按 inode 跟轮转，产物只把尾巴读完。
+# 单文件轮转：写**显式路径**。**不要写 `wifi.log*`** —— 通配虽然已经可执行（W1），
+# 但会把轮转产物（`wifi.log.0`、`wifi.log.*.bz2`）当成独立采集对象，而它们是历史。
+# 采集端按 inode 跟轮转：改名后只把尾巴读完，再跟新主文件。
 status = "active"
 
 [[units.sources]]
@@ -514,7 +521,8 @@ platform = "linux"
 match = ""
 rule_ref = ""
 requires_privilege = "root"
-# 采集就绪：`dmesg:panic` 是已知导出器；coredump 那两条是**通配**，今天仍采不到（如实报 unsupported）。
+# 采集就绪：`dmesg:panic` 是已知导出器；coredump 那两条是**通配**（W1 起可执行，但本单元
+# 先保持 draft，等机队验证 —— 见文件头「单层 glob 已可执行」那段）。
 status = "active"
 
 [[units.sources]]
@@ -638,7 +646,8 @@ platform = "linux"
 match = ""
 rule_ref = ""
 requires_privilege = "root"
-# 采集就绪：`smartctl` 是已知导出器；`fsck*` 是**通配**，今天仍采不到（如实报 unsupported）。
+# 采集就绪：`smartctl` 是已知导出器；`fsck*` 是**通配**（W1 起可执行，但本单元仍保持
+# draft，等机队验证 —— 见文件头「单层 glob 已可执行」那段）。
 status = "active"
 
 [[units.sources]]

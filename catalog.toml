@@ -22,9 +22,16 @@
 #
 # 现状（macOS）：5 个面可采（active）—— mac-software-change、mac-reboot-power、
 #   mac-network-wifi、mac-launchd-service、mac-host-metrics。
-# 现状（Linux）：10 个面可采 —— 5 个**显式路径**日志面（auth/secure、sudo.log、
-#   dpkg/apt/dnf/yum、kern.log/messages、audit.log）+ 4 个**导出器**面
-#   （ServiceLifecycle/CrashPanic/NetworkFirewall/RebootPower/StorageHealth）+ 指标面。
+# 现状（Linux）：10 个面可采 —— 按面分：
+#   LoginSession / PrivilegeExecution / SoftwareChange（`auth.log`/`secure`、`sudo.log`、
+#   `audit.log` 整文件跟尾、`dpkg.log`/`apt`/`dnf`/`yum`）、
+#   ServiceLifecycle / CrashPanic / NetworkFirewall / RebootPower / KernelSystem / StorageHealth
+#   （`journalctl-*`、`dmesg`、`nft`/`iptables-save`、`last`、`smartctl` 等导出器；
+#   CrashPanic 与 StorageHealth 另有 coredump / fsck 通配）、HostMetrics（指标）。
+#   **内核日志（KernelSystem）从 W3 起只走 journald**（`Exporter journalctl-kernel`，
+#   `journalctl -k -p 4 -o json` + 游标）：文件来源（`kern.log` / `messages`）是 rsyslog 的
+#   派生副本，PRIORITY/_TRANSPORT 都会丢，且和 journal 的保留期不同步 —— 两个源并存必然重复。
+#   非 systemd 主机上该面不展开（`path_exists:/run/systemd/journal`），**不做文件回退**（D6）。
 #   audit.log 是整文件跟尾：**不按 type= 丢行**，8 个 host_audit_* 由数据面按 type= 分派。
 #   判据（W1 起）：`FileGlob` 的目标是**绝对路径** —— 显式单文件，或**单层 glob/目录**
 #   （`*` 不跨目录，`**` 不支持）—— 或 `MetricInterval`；`Exporter` 用**已知导出器 ID**
@@ -52,9 +59,9 @@
 # 采集就绪（能不能派下去把原文拿回来）与解析就绪（rule_ref）是**两个轴**，不互相卡：
 #   mac-reboot-power 就是“可采但解析未就绪”的样本（原文进得来，只会归在泛化的 agent.log 下）。
 
-catalog_version = 8
+catalog_version = 9
 origin = "Gateway"
-published_at = "2026-10-22T00:00:00Z"
+published_at = "2026-10-23T00:00:00Z"
 
 # ── 采集面词表 ────────────────────────────────────────────────────
 #
@@ -598,19 +605,18 @@ unit_id = "linux-kernel-system"
 family = "KernelSystem"
 capability = "collect_logs"
 platform = "linux"
-match = ""
+match = "path_exists:/run/systemd/journal"
 rule_ref = ""
 requires_privilege = "root"
-# 采集就绪：kern.log（Debian）/ messages（RHEL）都是显式路径。
+# 采集就绪（W3）：内核日志**只从 journald 取**（`journalctl -k -p 4 -o json` + 游标续读）。
+# 为什么删掉 kern.log / messages：它们是 rsyslog 的派生副本（PRIORITY、_TRANSPORT 都没有，
+# 保留期也和 journal 不同步），两个源并存只会重复 + 漂移，不存在稳定的“优先”中间态。
+# 非 systemd 主机：`/run/systemd/journal` 不存在 → 该面不展开（不做文件回退，见 D6）。
 status = "active"
 
 [[units.sources]]
-kind = "FileGlob"
-target = "/var/log/kern.log"
-
-[[units.sources]]
-kind = "FileGlob"
-target = "/var/log/messages"
+kind = "Exporter"
+target = "journalctl-kernel"
 
 [[units]]
 unit_id = "linux-db-service"

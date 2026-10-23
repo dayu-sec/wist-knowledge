@@ -5,6 +5,29 @@
 
 > 说明：自 0.1.5 起维护本文件。
 
+## [0.5.0] - 2026-10-23
+
+### 变更
+
+- **内核日志（`KernelSystem`）改为 journald 唯一来源**：`linux-kernel-system` 的来源从
+  `/var/log/kern.log` + `/var/log/messages` 改为 `Exporter journalctl-kernel`
+  （`journalctl -k -p 4 -o json`，采集端靠游标续读，周期 60s）。
+  理由：文件是 rsyslog 的派生副本，**没有 `PRIORITY` / `_TRANSPORT`**，保留期也和 journal
+  不同步；两个源并存必然重复 + 漂移，不存在稳定的“优先”中间态。
+- **`match = "path_exists:/run/systemd/journal"`**：非 systemd 主机上该面不展开（不派空活），
+  **不做文件回退**。
+- `catalog_version` 8 → 9（目录 / 包 / 模板同步）。
+
+### 升级提示
+
+- ⚠ **发布顺序：contracts → agentd → 网关 → 本目录包**。
+  - 旧 agentd 不认识 `journalctl-kernel`，会把该单元如实报 `unsupported`（不静默）；
+  - 旧网关不认识这个 ID，会把「`active` 但无可执行来源」当成装载错误 —— **整份目录加载失败**，
+    所以不要在网关升级前把这份包推下去。
+- 升级后首轮会回看最近 5 分钟（首个游标），之后按游标续读。游标被 journal vacuum 后
+  journalctl **不会报错**（实测 systemd 259，会静默从起点重读）；agentd 在带游标**超时**时
+  会清掉游标、下一轮从 `--since` 重读（`event=ExporterCursorReset`）。
+
 ## [0.4.0] - 2026-10-22
 
 ### 变更

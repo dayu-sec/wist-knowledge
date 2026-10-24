@@ -5,6 +5,38 @@
 
 > 说明：自 0.1.5 起维护本文件。
 
+## [0.5.1] - 2026-10-24
+
+### 新增 / 变更（§6.6 G2 + G3）
+
+- **新增 `linux-container-stdout`（ComputeWorkload，`active`）**：来源 `/var/log/containers/*.log`，
+  `match = path_exists:/var/log/containers`。13 business / 15 gateway / 16 k8s_pod 是**同一批
+  容器 stdout** 的三种归类 —— 只建一个单元（拆两条 active 会重复采，G5），归类在数据面按正文分派。
+  `filters` 默认留空（= 全采）：namespace 白名单是部署结论，需要时改这一条来源即可。
+- **`linux-compute-workload` 去掉 `/var/log/pods/*`**：旧形态与容器单元重叠，且 `0.log` / `1.log`
+  与轮转产物在同一目录（D4）。仍保持 `draft`（slurm / nvidia 面未验收）。
+- **`linux-db-service` 翻 `active`（W4）**：Postgres csvlog（`/var/log/postgresql/*.csv`，
+  `multiline = "postgres_csv"`）与 MySQL slow log（`/var/log/mysql/*slow*.log`，
+  `multiline = "mysql_slow"`）。删掉旧的全目录 glob（会与上面两条重叠）。
+  事实门从 `installed:*` 改为 `path_exists:/var/log/{postgresql,mysql,redis,mongodb}`：
+  包清单探针还没实现（`packages` 恒空），用 `installed:` 会让这个面永远展不开。
+  redis / mongodb 来源收窄到 `*.log`（不把轮转产物当新文件重读）。
+- **`auth.log` / `secure` 配 `drop_if_contains`**：`pam_unix(cron:session)`、`systemd-logind`、
+  `pam_unix(systemd-user:session)`（§6 W4 指定）。
+- `catalog_version` 9 → 10（目录 / 包 / 模板同步）；`linux-workload` 包加入容器单元。
+
+### 升级提示
+
+- 现场滚动顺序：**contracts → 网关 → agentd → web → 本目录包**。
+  - 老网关收到新 agentd 的能力上报会 `deny_unknown_fields` **整份拒收**，所以网关先升；
+  - `drop_if_contains` 是**减法**：agent 不支持或没报能力时，网关**去掉这个字段继续采**
+    （auth 仍然可用，只是噪音行会上送；不会再出现整份 spec 拒收）；
+  - `filters` 与新**读法**不同：前者不支持就裁源（范围结论不能被忽略），后者不支持时旧
+    agent 会按“一行一条”读（csvlog / slow 记录会被切碎）；旧**网关**不认识新读法会整份目录拒载。
+  - 所以推荐的机队前置是 agentd ≥ 0.9.1；至少要 0.9.0-alpha（上报能力）。目录包最后发。
+- `systemd-logind` 子串会连带丢掉“New session …”这类会话事件（子串过滤分不出噪音与正事）。
+  若现场需要保留会话事件，把这条换成更长的子串（如 `systemd-logind: New seat`）。
+
 ## [0.5.0] - 2026-10-23
 
 ### 变更

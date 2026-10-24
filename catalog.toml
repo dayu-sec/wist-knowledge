@@ -13,6 +13,8 @@
 #          「没探测过」≠「不存在」，见模型 CollectionUnit.match）。
 #          可用 kind：installed | port | path_exists（**绝对路径**；agentd 按网关下发的
 #          白名单实探，探测范围由本文件的 path_exists 条件推导）。
+#          `port:` 只接受**稳定服务端口**（< 32768）：临时端口区间（客户端 socket / 端口池 /
+#          端口转发）不进摘要，写在那个区间的条件会判成「无法判定」，永远判不出 Yes。
 #   rule_ref：数据面 rule/oml 标识 —— **解析就绪度**：非空 = 有规则，采下来的记录能被归类、
 #            抽字段；空 = 只落原文（帧照进、记录照落，只是都归在泛化的 agent.log 下）。
 #            **它不是采集闸门** —— 采原文不需要任何规则，规则是数据面的事。
@@ -22,12 +24,15 @@
 #
 # 现状（macOS）：5 个面可采（active）—— mac-software-change、mac-reboot-power、
 #   mac-network-wifi、mac-launchd-service、mac-host-metrics。
-# 现状（Linux）：10 个面可采 —— 按面分：
+# 现状（Linux）：12 个面可采 —— 按面分：
 #   LoginSession / PrivilegeExecution / SoftwareChange（`auth.log`/`secure`、`sudo.log`、
 #   `audit.log` 整文件跟尾、`dpkg.log`/`apt`/`dnf`/`yum`）、
 #   ServiceLifecycle / CrashPanic / NetworkFirewall / RebootPower / KernelSystem / StorageHealth
 #   （`journalctl-*`、`dmesg`、`nft`/`iptables-save`、`last`、`smartctl` 等导出器；
-#   CrashPanic 与 StorageHealth 另有 coredump / fsck 通配）、HostMetrics（指标）。
+#   CrashPanic 与 StorageHealth 另有 coredump / fsck 通配）、HostMetrics（指标）、
+#   ComputeWorkload（容器 stdout：`/var/log/containers/*.log`；13 business / 15 gateway /
+#   16 k8s_pod 是**同一批流**的三种归类，采集侧只采一次，归类由数据面按正文分派）、
+#   DatabaseService（Postgres csvlog / MySQL slow log；记录边界见 W4）。
 #   **内核日志（KernelSystem）从 W3 起只走 journald**（`Exporter journalctl-kernel`，
 #   `journalctl -k -p 4 -o json` + 游标）：文件来源（`kern.log` / `messages`）是 rsyslog 的
 #   派生副本，PRIORITY/_TRANSPORT 都会丢，且和 journal 的保留期不同步 —— 两个源并存必然重复。
@@ -37,9 +42,12 @@
 #   （`*` 不跨目录，`**` 不支持）—— 或 `MetricInterval`；`Exporter` 用**已知导出器 ID**
 #   （见 `wist-contracts::work::EXPORTER_IDS`）。`~` 与相对路径永远不可执行。
 #
-# 单层 glob **已可执行**，但不要因此把靠通配的单元直接翻 active：机队里仍有不认识 glob 的
-# 旧 agentd（它们会如实报 unsupported）。按 `linux-server-log-coverage-plan.md` D7 的发布纪律，
-# 先让机队升级并验证，再单独发一版目录翻 active。
+# 单层 glob **已可执行**，而且从 D7/G1 起能力是可协商的：带 glob / `filters` /
+# `drop_if_contains` / 新读法的来源，会在派活时按 agent 自报的能力处理：
+#   * `drop_if_contains`（减法）不支持/未上报 → 去掉字段继续采（上送量变大，不裁源）；
+#   * `filters`（范围结论）/ 新读法 → 不支持就裁源（不能把“收窄”静默成“全采”、
+#     也不能让旧 agent 按行切 csvlog / slow log）。
+# 所以这些单元可以翻 `active`；但机队最好先升到 agentd 0.9.1（否则新读法退化成一行一条）。
 #
 # **单文件轮转的不要用通配写**（`wifi.log*` 是错写法）：通配会把轮转产物（`wifi.log.0`、
 #   `wifi.log.*.bz2`）也纳入匹配集。正确写法是显式写当前那个文件（`/var/log/wifi.log`）：
@@ -59,9 +67,9 @@
 # 采集就绪（能不能派下去把原文拿回来）与解析就绪（rule_ref）是**两个轴**，不互相卡：
 #   mac-reboot-power 就是“可采但解析未就绪”的样本（原文进得来，只会归在泛化的 agent.log 下）。
 
-catalog_version = 9
+catalog_version = 10
 origin = "Gateway"
-published_at = "2026-10-23T00:00:00Z"
+published_at = "2026-10-24T00:00:00Z"
 
 # ── 采集面词表 ────────────────────────────────────────────────────
 #
@@ -190,10 +198,10 @@ summary_en = "Storage and filesystem health (fsck / RAID / SMART / capacity)."
 [[families]]
 id = "ComputeWorkload"
 platforms = ["linux"]
-name_zh = "作业与加速卡"
-name_en = "Workloads & accelerators"
-summary_zh = "作业、调度与加速卡。"
-summary_en = "Jobs, schedulers, and accelerators."
+name_zh = "作业、加速卡与容器"
+name_en = "Workloads, accelerators & containers"
+summary_zh = "作业、调度、加速卡，以及容器 stdout。"
+summary_en = "Jobs, schedulers, accelerators, and container stdout."
 
 [[families]]
 id = "BackupJob"
@@ -440,10 +448,23 @@ status = "active"
 [[units.sources]]
 kind = "FileGlob"
 target = "/var/log/auth.log"
+# W4：噪音行（整条命中就丢）——每分钟一条、信息量为零的会话噪音。
+# 只做子串（不是正则）；丢弃数进 agentd 自观测（`telemetry noise dropped …`）。
+# 带这个字段要求 agentd 支持 `drop_if_contains:substring`，旧 agent 上由网关裁掉该来源。
+drop_if_contains = [
+  "pam_unix(cron:session)",
+  "systemd-logind",
+  "pam_unix(systemd-user:session)",
+]
 
 [[units.sources]]
 kind = "FileGlob"
 target = "/var/log/secure"
+drop_if_contains = [
+  "pam_unix(cron:session)",
+  "systemd-logind",
+  "pam_unix(systemd-user:session)",
+]
 
 [[units]]
 unit_id = "linux-sudo-log"
@@ -528,8 +549,9 @@ platform = "linux"
 match = ""
 rule_ref = ""
 requires_privilege = "root"
-# 采集就绪：`dmesg:panic` 是已知导出器；coredump 那两条是**通配**（W1 起可执行，但本单元
-# 先保持 draft，等机队验证 —— 见文件头「单层 glob 已可执行」那段）。
+# 采集就绪：`dmesg:panic` 是已知导出器；coredump 那两条是**单层 glob**（W1 起可执行）。
+# 旧 agent 上靠 D7/G1 的能力裁剪（`file_inputs:glob`）在派活时裁掉这两条来源，
+# 不会把整份 spec 发下去换 `unsupported`（§6.6 G1）。
 status = "active"
 
 [[units.sources]]
@@ -623,26 +645,41 @@ unit_id = "linux-db-service"
 family = "DatabaseService"
 capability = "collect_logs"
 platform = "linux"
-match = "installed:postgresql|mysql|redis|mongodb"
+match = "path_exists:/var/log/postgresql|/var/log/mysql|/var/log/redis|/var/log/mongodb"
 rule_ref = ""
 requires_privilege = "root"
-status = "draft"
+# 采集就绪（W4）：两种记录边界都是**日志格式固有的**，不是偏好 ——
+#   * Postgres csvlog：字段（如 message）会把换行写进引号里，按行切会把一条 SQL 错误
+#     拆成几条不完整的记录；`postgres_csv` 只在引号外的换行切。
+#   * MySQL slow log：一条慢查询横跨多行，靠 `# Time:` 起块；按行切会把一条记录拆散。
+#
+# 为什么要用 `path_exists` 而不是 `installed:postgresql|mysql|...` 做门：
+#   包清单探针还没实现（agentd backlog B119，`packages` 恒空），`installed:` 恒为
+#   “无法判定” → 这个面永远展不开（能授权、但一授权就 409）。日志目录是真实已知的。
+#
+# 只收 `.csv` / `*slow*.log`：旧写法 `/var/log/postgresql/*`、`/var/log/mysql/*` 会与它们重叠
+# （同一文件被两条来源各读一遍 → 重复采集，G5）。没有匹配不算失败，所以没开 csvlog /
+# slow log 的机器不会每轮报错。
+status = "active"
 
 [[units.sources]]
 kind = "FileGlob"
-target = "/var/log/postgresql/*"
+target = "/var/log/postgresql/*.csv"
+multiline = "postgres_csv"
 
 [[units.sources]]
 kind = "FileGlob"
-target = "/var/log/mysql/*"
+# slow log 的文件名由 `slow_query_log_file` 决定（`slow.log` / `mysql-slow.log` 都见过）。
+target = "/var/log/mysql/*slow*.log"
+multiline = "mysql_slow"
 
 [[units.sources]]
 kind = "FileGlob"
-target = "/var/log/redis/*"
+target = "/var/log/redis/*.log"
 
 [[units.sources]]
 kind = "FileGlob"
-target = "/var/log/mongodb/*"
+target = "/var/log/mongodb/*.log"
 
 [[units]]
 unit_id = "linux-storage-health"
@@ -652,8 +689,8 @@ platform = "linux"
 match = ""
 rule_ref = ""
 requires_privilege = "root"
-# 采集就绪：`smartctl` 是已知导出器；`fsck*` 是**通配**（W1 起可执行，但本单元仍保持
-# draft，等机队验证 —— 见文件头「单层 glob 已可执行」那段）。
+# 采集就绪：`smartctl` 是已知导出器；`fsck*` 是**单层 glob**（W1 起可执行）。
+# 旧 agent 上靠 D7/G1 的能力裁剪（`file_inputs:glob`）在派活时裁掉这条来源。
 status = "active"
 
 [[units.sources]]
@@ -663,6 +700,33 @@ target = "smartctl"
 [[units.sources]]
 kind = "FileGlob"
 target = "/var/log/fsck*"
+
+[[units]]
+unit_id = "linux-container-stdout"
+family = "ComputeWorkload"
+capability = "collect_logs"
+platform = "linux"
+# 有容器日志 symlink 目录才有这个面（kubelet 建 `/var/log/containers`；纯 Docker 主机没有）。
+# 用 path_exists 而不是 `installed:kubelet`：判的是“日志在不在”，不是“装了什么”。
+match = "path_exists:/var/log/containers"
+rule_ref = ""
+requires_privilege = "root"
+# 采集就绪：W1 的文件族 glob + W2 的结构化选源（`filters`）。
+#
+# 为什么只有**一个**单元：13 business / 15 gateway / 16 k8s_pod 是同一批容器 stdout 的
+# 三种页面归类（D8），拆成两条 active 单元会重复采同一批文件（G5）。
+# 归类在数据面做：`source_type=container_stdout`，`log_type` 按正文分派
+# （gateway > business > k8s_pod）。
+#
+# `filters` 默认留空 = 全采：namespace 白名单是**部署结论**，平台基线替客户圈定范围只会
+# 悄悄少采。需要收窄时改这一条来源的 `filters = { namespace_in = [...] }` /
+# `pod_not_in = [...]`（值必须是精确名字）；带 filters 的单元要求 agentd 声明对应能力
+# （`filters:namespace_in` / `filters:pod_not_in`），旧 agent 上由网关在派活时裁掉这条来源。
+status = "active"
+
+[[units.sources]]
+kind = "FileGlob"
+target = "/var/log/containers/*.log"
 
 [[units]]
 unit_id = "linux-compute-workload"
@@ -678,9 +742,9 @@ status = "draft"
 kind = "FileGlob"
 target = "/var/log/slurm/*"
 
-[[units.sources]]
-kind = "FileGlob"
-target = "/var/log/pods/*"
+# 容器 stdout **不在这里**：它由 `linux-container-stdout` 采（同一批流只读一次）。
+# 旧写法 `/var/log/pods/*` 会在每次轮转 / 容器重启时丢掉尾巴（`0.log` / `1.log` 歧义，
+# 且轮转产物与活文件同目录），也跟另一条 active 单元重复 —— 见 linux-server-log-coverage-plan D4 / G5。
 
 [[units.sources]]
 kind = "Exporter"

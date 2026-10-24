@@ -11,8 +11,9 @@
 #     一个单元可有多来源；`glob:A|B` 这种在一个串里塞多路径的写法已拆成多条来源。
 #   match：装了什么 / 跑了什么 / **哪个路径在不在**才采；空 = 平台基线必采（三态求值，
 #          「没探测过」≠「不存在」，见模型 CollectionUnit.match）。
-#          可用 kind：installed | port | path_exists（**绝对路径**；agentd 按网关下发的
-#          白名单实探，探测范围由本文件的 path_exists 条件推导）。
+#          可用 kind：installed | port | path_exists | not_path_exists（**绝对路径**；agentd 按网关下发的
+#          白名单实探，探测范围由本文件的 path_exists / not_path_exists 条件推导）。`|` 是同一条件的
+#          候选（OR），`;` 是条件之间（AND）。
 #          `port:` 只接受**稳定服务端口**（< 32768）：临时端口区间（客户端 socket / 端口池 /
 #          端口转发）不进摘要，写在那个区间的条件会判成「无法判定」，永远判不出 Yes。
 #   rule_ref：数据面 rule/oml 标识 —— **解析就绪度**：非空 = 有规则，采下来的记录能被归类、
@@ -38,8 +39,8 @@
 #   派生副本，PRIORITY/_TRANSPORT 都会丢，且和 journal 的保留期不同步 —— 两个源并存必然重复。
 #   非 systemd 主机上该面不展开（`path_exists:/run/systemd/journal`），**不做文件回退**（D6）。
 #   audit.log 是整文件跟尾：**不按 type= 丢行**，8 个 host_audit_* 由数据面按 type= 分派。
-#   判据（W1 起）：`FileGlob` 的目标是**绝对路径** —— 显式单文件，或**单层 glob/目录**
-#   （`*` 不跨目录，`**` 不支持）—— 或 `MetricInterval`；`Exporter` 用**已知导出器 ID**
+#   判据（W1 起）：`FileGlob` 的目标是**绝对路径** —— 显式单文件，或 glob/目录（任意层，
+#   `*` 不跨目录，`**` 不支持）—— 或 `MetricInterval`；`Exporter` 用**已知导出器 ID**
 #   （见 `wist-contracts::work::EXPORTER_IDS`）。`~` 与相对路径永远不可执行。
 #
 # 单层 glob **已可执行**，而且从 D7/G1 起能力是可协商的：带 glob / `filters` /
@@ -743,13 +744,23 @@ platform = "linux"
 # 存在 = k8s 节点，容器面交给 `linux-container-stdout`（见 docker-container-logs.md §5.5）。
 # 注意否条件是三态的：**没探过 → 无法判定**，所以网关必须把该路径也放进探测白名单
 # （`probe_paths` 已覆盖），旧网关不认识这个条件时本单元不会展开（保守，不会重复采）。
+#
+# ⚠ **已知限制（用“目录存在”作代理信号的代价）**：
+#   1. k8s 用 containerd、同时又装了 docker 跑非 k8s 容器的机器：两个目录都在 → 本单元被
+#      排除 → **那些非 k8s 容器的 stdout 不采**（0.5.2 下是可采的）；
+#   2. k8s 卸掉但 `/var/log/containers` 目录残留的机器：k8s 单元展开为 0 个文件、本单元
+#      又被排除 → 容器 stdout **完全不采**。
+#   探针只回答“在/不在”，区分不了“目录里有 symlink”这种情况。遇到上述现场时，
+#   人工授权直接点名本单元（`spec=linux-docker-container-stdout`）可恢复采集；
+#   代价是不再去重，需要现场确认不会双采。
 match = "path_exists:/var/lib/docker/containers;not_path_exists:/var/log/containers"
 rule_ref = ""
 requires_privilege = "root"
 # 采集就绪：**正文原样**，不在这里解 docker 的 JSON 信封 —— 解码归数据面（与 CRI 头同一层，
 # 见 `docker-container-logs.md` §5.1）。所以本单元不需要新读法、也不需要新能力轴：
 # 老 agentd 照样能执行（它只需要把字节搬回来）。
-# 容器身份（name / image / id）要等帧字段落地；在那之前只能靠 `source_path` 里的 id 回查。
+# 容器身份（name / image / id）自 agentd 0.9.4 / contracts 0.9.6 起已进帧（M1）；
+# 仍缺的是数据面按名字分派 13/15/16（M2，不属于采集侧）。
 status = "active"
 
 [[units.sources]]

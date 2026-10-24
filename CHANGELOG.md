@@ -5,6 +5,32 @@
 
 > 说明：自 0.1.5 起维护本文件。
 
+## [0.5.4] - 2026-10-24
+
+### 新增
+
+- **容器主机的用途规则**（`purpose_version` 2 → 3）：新增 `dockerd` / `containerd` 两条
+  `LinuxCompute` 判据（各 15 分）。以前一台**只跑业务容器**的机器（无 k8s、无数据库守护进程）
+  一条规则都不命中 → 落 `LinuxHost` 基线 → 而 `linux-host` 模板不带 `linux-workload` →
+  容器 stdout 单元**根本派不到**。权重压在 40 以下：同机跑数据库时仍归 `LinuxData`
+  （它的模板本来就包含 `linux-workload`），不会被抢成计算类。
+
+### 变更
+
+- `linux-docker-container-stdout` 的注释补上**已知限制**：`not_path_exists` 是整机级开关。
+  `k8s(containerd) + 独立 dockerd` 的混跑主机、以及 `/var/log/containers` 残留目录的主机，
+  会少采 / 不采 docker 容器 stdout。逃生口：人工授权直接点名该单元
+  （`spec=linux-docker-container-stdout`，不再保证去重）。
+- 目录注释订正：`match` 可用 kind 补上 `not_path_exists`；`FileGlob` 是**任意层** glob
+  （`*` 不跨目录、`**` 不支持）；容器身份已进帧（M1），不再是“等帧字段落地”。
+
+### 升级注意
+
+- 本包要求**网关 ≥ 0.20.3-alpha**：不认识 `not_path_exists` 的旧网关会把 docker 单元
+  整条不展开（保守，不会重采）。对 agentd 的要求不变（该单元只需按 glob 读文件）。
+- 已激活过知识包的站点：录入并激活 0.5.4 后**重新授权**一次，用途建议与模板展开才会用新规则。
+  `catalog_version` 保持 12（单元内容未变），可以用 `purpose_version = 3` 确认新包生效。
+
 ## [0.5.3] - 2026-10-24
 
 ### 变更
@@ -21,7 +47,10 @@
 - **旧网关不认识 `not_path_exists:`** → 该单元整条不展开（保守：不会重复采，但纯 Docker
   主机上容器 stdout 会暂时采不到）。所以升级顺序是 **网关 → agentd → 知识库包**，
   与之前一致。
-- 新特性还要等一轮策略拉取（≤ 5 分钟）才能把 `/var/log/containers` 放进探测白名单。
+- ⚠ **重新授权前先确认 agent 已探测过 `/var/log/containers`**：否定条件靠三态求值，
+  “没探过”等于“无法判定”。这条路径从 0.5.1 的 k8s 单元起就在探测白名单里，
+  所以通常升级后直接重新授权即可；如果刚升级完 agent，先等一轮策略拉取（≤ 5 分钟）
+  并把 `probed_paths` 确认下来—— spec 在**授权那一刻**固化，缺了就得再授权一次。
 
 ## [0.5.2] - 2026-10-24
 

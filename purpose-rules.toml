@@ -24,7 +24,7 @@
 # 改内容必须 bump `purpose_version`：它是**归因锚** —— 建议里记的 `rule_set_id` 只说
 # “哪一册”，不说“哪一版”；只改值不改版本，就再也说不清“这条建议是哪版规则算的”
 # （网关侧见 docs/design/knowledge-content-management.md §8.2）。
-purpose_version = 2
+purpose_version = 3
 
 [[rule_set]]
 rule_set_id = "macos-v1"
@@ -245,6 +245,25 @@ weight = 20
 rule_id = "linux-compute-kube-proxy"
 kind = "process"
 pattern = "kube-proxy"
+machine_class = "LinuxCompute"
+weight = 15
+
+# 容器运行时：一台**只跑业务容器**的机器（没有 k8s、也没有数据库守护进程）旧规则一条都不命中
+# → 落 baseline `LinuxHost`，而 `linux-host` 模板不带 `linux-workload` → 容器 stdout 单元
+# 根本派不到。dockerd 与 containerd 一起给分，正好满足 `min_support = 2`。
+# 权重刻意压在 40 以下（数据库机的 mysqld/postgres 是 40）：同机跑数据库时，
+# 类仍是 `LinuxData`（模板本就包含 `linux-workload`），不会被抢成计算类。
+[[rule_set.rules]]
+rule_id = "linux-compute-dockerd"
+kind = "process"
+pattern = "dockerd"
+machine_class = "LinuxCompute"
+weight = 15
+
+[[rule_set.rules]]
+rule_id = "linux-compute-containerd"
+kind = "process"
+pattern = "containerd"
 machine_class = "LinuxCompute"
 weight = 15
 

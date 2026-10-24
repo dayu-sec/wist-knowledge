@@ -5,6 +5,29 @@
 
 > 说明：自 0.1.5 起维护本文件。
 
+## [0.5.2] - 2026-10-24
+
+### 新增
+
+- **`linux-docker-container-stdout`（ComputeWorkload，`active`）**：纯 Docker 主机（没有 kubelet）
+  的容器 stdout。来源 `/var/lib/docker/containers/*/*-json.log*`，
+  `match = path_exists:/var/lib/docker/containers`，`requires_privilege = root`。
+  与 `linux-container-stdout` 是**两个载体、同一批语义**（13/15/16 仍是同一类，归类在数据面）。
+
+  **正文原样**：这里不解析 docker 的 JSON 信封（`{"log":…,"stream":…,"time":…}`），
+  解码归数据面（与 CRI 头同一层）。所以本单元**不需要新读法、也不需要新能力轴**，
+  旧 agentd 照样能执行 —— 代价是正文暂时是原始 JSON 行，等数据面规则落地才好看。
+
+- `catalog_version` 10 → 11（目录 / 包 / 模板同步）；`linux-workload` 包加入该单元。
+
+### 升级注意
+
+- ⚠ **k8s + cri-dockerd 的主机会重复采集**：那类机器上 kubelet 的 pod 日志路径指向 docker
+  的 json 文件，两个单元的 `match` 会同时命中。否定条件（`not_path_exists:`）落地前，
+  这类集群先不要把机器纳入 `linux-workload` 包。纯 Docker 主机（无 kubelet）不受影响。
+- 日志量取决于容器数量与活跃度；单轮读取量仍受 `max_read_bytes_per_tick` 限制，
+  首次授权从 `tail` 开始（不回放历史）。
+
 ## [0.5.1] - 2026-10-24
 
 ### 新增 / 变更（§6.6 G2 + G3）

@@ -42,7 +42,7 @@ unit_refs = [
   "mac-misc-system",
   "mac-host-metrics",
 ]
-catalog_version = 10
+catalog_version = 11
 status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-09-22T00:00:00Z"
@@ -56,7 +56,7 @@ unit_refs = [
   "mac-privilege-exec",
   "mac-dev-toolchain",
 ]
-catalog_version = 10
+catalog_version = 11
 status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-09-22T00:00:00Z"
@@ -92,13 +92,14 @@ unit_refs = [
   "linux-storage-health",
   "linux-host-metrics",
 ]
-catalog_version = 10
+catalog_version = 11
 status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-09-22T00:00:00Z"
 
 # 作业/调度/加速卡 + 容器 stdout：由单元的 `match` 做事实门。
-# 容器面（`linux-container-stdout`）只挂在有 `/var/log/containers` 的机器上 ——
+# 容器面有**两个载体**：`linux-container-stdout`（k8s，`/var/log/containers`）与
+# `linux-docker-container-stdout`（纯 Docker，`/var/lib/docker/containers`）。
 # `linux-workload` 本身不设门，门在单元上（`pack` 不带条件）。
 [[pack]]
 pack_id = "linux-workload"
@@ -107,9 +108,10 @@ kind = "Feature"
 families = ["ComputeWorkload"]
 unit_refs = [
   "linux-container-stdout",
+  "linux-docker-container-stdout",
   "linux-compute-workload",
 ]
-catalog_version = 10
+catalog_version = 11
 status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-09-22T00:00:00Z"
@@ -123,7 +125,7 @@ unit_refs = [
   "linux-db-service",
   "linux-backup-job",
 ]
-catalog_version = 10
+catalog_version = 11
 status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-09-22T00:00:00Z"
@@ -137,7 +139,7 @@ unit_refs = [
   "linux-misc-system",
   "linux-network-service",
 ]
-catalog_version = 10
+catalog_version = 11
 status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-09-22T00:00:00Z"

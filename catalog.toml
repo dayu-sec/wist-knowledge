@@ -67,7 +67,7 @@
 # 采集就绪（能不能派下去把原文拿回来）与解析就绪（rule_ref）是**两个轴**，不互相卡：
 #   mac-reboot-power 就是“可采但解析未就绪”的样本（原文进得来，只会归在泛化的 agent.log 下）。
 
-catalog_version = 10
+catalog_version = 11
 origin = "Gateway"
 published_at = "2026-10-24T00:00:00Z"
 
@@ -727,6 +727,34 @@ status = "active"
 [[units.sources]]
 kind = "FileGlob"
 target = "/var/log/containers/*.log"
+
+[[units]]
+unit_id = "linux-docker-container-stdout"
+family = "ComputeWorkload"
+capability = "collect_logs"
+platform = "linux"
+# 纯 Docker 主机（没有 kubelet）：容器日志在 `<docker-root>/containers/<id>/<id>-json.log`，
+# 默认 `/var/lib/docker`。与上面的 k8s 单元是**两个载体、同一批语义**（13/15/16）：
+# 读法相同（`none`：一行一条），区别只在路径与文件格式的解释位置。
+# 用 path_exists 而不是 `installed:docker`：判的是"日志在不在"，不是"装了什么"。
+#
+# ⚠ **k8s + cri-dockerd** 的主机上两个单元会同时命中（kubelet 把 pod 日志路径指向 docker 的
+#   json 文件）→ 同一份日志被采两遍。`not_path_exists:` 条件落地前，这类集群先别把机器
+#   纳入本面（见 docker-container-logs.md §5.5）。
+match = "path_exists:/var/lib/docker/containers"
+rule_ref = ""
+requires_privilege = "root"
+# 采集就绪：**正文原样**，不在这里解 docker 的 JSON 信封 —— 解码归数据面（与 CRI 头同一层，
+# 见 `docker-container-logs.md` §5.1）。所以本单元不需要新读法、也不需要新能力轴：
+# 老 agentd 照样能执行（它只需要把字节搬回来）。
+# 容器身份（name / image / id）要等帧字段落地；在那之前只能靠 `source_path` 里的 id 回查。
+status = "active"
+
+[[units.sources]]
+kind = "FileGlob"
+# `*-json.log*` 覆盖 docker 自己的轮转产物（设了 `max-size` 时会转成 `-json.log.1`）。
+# 多层 glob（容器 id 是目录名）读取器本来就支持：按固定前缀逐层 `read_dir`。
+target = "/var/lib/docker/containers/*/*-json.log*"
 
 [[units]]
 unit_id = "linux-compute-workload"

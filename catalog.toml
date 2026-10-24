@@ -67,7 +67,7 @@
 # 采集就绪（能不能派下去把原文拿回来）与解析就绪（rule_ref）是**两个轴**，不互相卡：
 #   mac-reboot-power 就是“可采但解析未就绪”的样本（原文进得来，只会归在泛化的 agent.log 下）。
 
-catalog_version = 11
+catalog_version = 12
 origin = "Gateway"
 published_at = "2026-10-24T00:00:00Z"
 
@@ -738,10 +738,12 @@ platform = "linux"
 # 读法相同（`none`：一行一条），区别只在路径与文件格式的解释位置。
 # 用 path_exists 而不是 `installed:docker`：判的是"日志在不在"，不是"装了什么"。
 #
-# ⚠ **k8s + cri-dockerd** 的主机上两个单元会同时命中（kubelet 把 pod 日志路径指向 docker 的
-#   json 文件）→ 同一份日志被采两遍。`not_path_exists:` 条件落地前，这类集群先别把机器
-#   纳入本面（见 docker-container-logs.md §5.5）。
-match = "path_exists:/var/lib/docker/containers"
+# **k8s + cri-dockerd** 的主机上两个单元会同时命中（kubelet 把 pod 日志路径指向 docker 的
+# json 文件）→ 同一份日志被采两遍。这里加一条否条件把它们分开：`/var/log/containers`
+# 存在 = k8s 节点，容器面交给 `linux-container-stdout`（见 docker-container-logs.md §5.5）。
+# 注意否条件是三态的：**没探过 → 无法判定**，所以网关必须把该路径也放进探测白名单
+# （`probe_paths` 已覆盖），旧网关不认识这个条件时本单元不会展开（保守，不会重复采）。
+match = "path_exists:/var/lib/docker/containers;not_path_exists:/var/log/containers"
 rule_ref = ""
 requires_privilege = "root"
 # 采集就绪：**正文原样**，不在这里解 docker 的 JSON 信封 —— 解码归数据面（与 CRI 头同一层，

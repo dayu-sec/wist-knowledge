@@ -5,6 +5,24 @@
 
 > 说明：自 0.1.5 起维护本文件。
 
+## [0.5.3] - 2026-10-24
+
+### 变更
+
+- **`linux-docker-container-stdout` 加否定条件**：
+  `match = "path_exists:/var/lib/docker/containers;not_path_exists:/var/log/containers"`。
+  `k8s + cri-dockerd` 的主机上 kubelet 把 pod 日志路径指向 docker 的 json 文件，两个容器单元
+  会同时命中 → 同一份日志采两遍。现在有 `/var/log/containers` 的机器交给
+  `linux-container-stdout`，docker 单元不再展开。
+- `catalog_version` 11 → 12（目录 / 包 / 模板同步）。
+
+### 升级注意
+
+- **旧网关不认识 `not_path_exists:`** → 该单元整条不展开（保守：不会重复采，但纯 Docker
+  主机上容器 stdout 会暂时采不到）。所以升级顺序是 **网关 → agentd → 知识库包**，
+  与之前一致。
+- 新特性还要等一轮策略拉取（≤ 5 分钟）才能把 `/var/log/containers` 放进探测白名单。
+
 ## [0.5.2] - 2026-10-24
 
 ### 新增

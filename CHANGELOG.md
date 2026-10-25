@@ -26,6 +26,10 @@
 - ⚠ **已授权 `ComputeWorkload` 的站点：那台机的容器采集会停** —— 单元已经属于新面，
   旧授权里没有它。激活后需要**重新授权 `ContainerWorkload`**（或整机重新授权）。
   这是本次升级唯一的操作步骤。
+- ⚠ **先 revoke，再授权**：已经存在的那份 `ComputeWorkload` 常驻工作锁的是旧 spec，
+  里面仍然指着容器单元。若直接再授权 `ContainerWorkload`，同一批文件会被**两条工作、
+  两个 input 各采一遍**（各自 checkpoint，不会去重）。正确顺序：
+  1) `revoke` 该机器的 `ComputeWorkload` 工作；2) 授权 `ContainerWorkload`。
 - 激活后 `catalog_version = 13`、`purpose_version = 4` 可确认新包生效。
 
 ## [0.5.4] - 2026-10-24

@@ -42,7 +42,7 @@ unit_refs = [
   "mac-misc-system",
   "mac-host-metrics",
 ]
-catalog_version = 12
+catalog_version = 13
 status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-09-22T00:00:00Z"
@@ -56,7 +56,7 @@ unit_refs = [
   "mac-privilege-exec",
   "mac-dev-toolchain",
 ]
-catalog_version = 12
+catalog_version = 13
 status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-09-22T00:00:00Z"
@@ -78,6 +78,7 @@ families = [
   "KernelSystem",
   "StorageHealth",
   "HostMetrics",
+  "ContainerWorkload",
 ]
 unit_refs = [
   "linux-auth-session",
@@ -91,15 +92,18 @@ unit_refs = [
   "linux-kernel-system",
   "linux-storage-health",
   "linux-host-metrics",
+  # 容器 stdout 是**主机普遍能力**（有 docker / kubelet 就有），不按机器用途分发：
+  # 放进基线包，LinuxHost 也能拿到这个面（以前挂在 Feature 包上，纯 Docker 业务机拿不到）。
+  "linux-container-stdout",
+  "linux-docker-container-stdout",
 ]
-catalog_version = 12
+catalog_version = 13
 status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-09-22T00:00:00Z"
 
-# 作业/调度/加速卡 + 容器 stdout：由单元的 `match` 做事实门。
-# 容器面有**两个载体**：`linux-container-stdout`（k8s，`/var/log/containers`）与
-# `linux-docker-container-stdout`（纯 Docker，`/var/lib/docker/containers`）。
+# 作业/调度/加速卡：由单元的 `match` 做事实门（`installed:slurm|kubelet`）。
+# 容器面**不在这里**了：它已独立成 `ContainerWorkload` 并挂在 `linux-base`（见上）。
 # `linux-workload` 本身不设门，门在单元上（`pack` 不带条件）。
 [[pack]]
 pack_id = "linux-workload"
@@ -107,11 +111,9 @@ platform = "linux"
 kind = "Feature"
 families = ["ComputeWorkload"]
 unit_refs = [
-  "linux-container-stdout",
-  "linux-docker-container-stdout",
   "linux-compute-workload",
 ]
-catalog_version = 12
+catalog_version = 13
 status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-09-22T00:00:00Z"
@@ -125,7 +127,7 @@ unit_refs = [
   "linux-db-service",
   "linux-backup-job",
 ]
-catalog_version = 12
+catalog_version = 13
 status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-09-22T00:00:00Z"
@@ -139,7 +141,7 @@ unit_refs = [
   "linux-misc-system",
   "linux-network-service",
 ]
-catalog_version = 12
+catalog_version = 13
 status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-09-22T00:00:00Z"

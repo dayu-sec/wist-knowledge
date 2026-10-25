@@ -5,6 +5,29 @@
 
 > 说明：自 0.1.5 起维护本文件。
 
+## [0.5.5] - 2026-10-25
+
+### 变更（面拆分：容器 stdout 独立成 `ContainerWorkload`）
+
+- **新增面 `ContainerWorkload`**（Linux）：容器 stdout（13 business / 15 gateway / 16 k8s_pod）。
+  两个容器单元 `linux-container-stdout` / `linux-docker-container-stdout` 从 `ComputeWorkload`
+  迁入，并被 `linux-base` 基线包引用 —— **所有 Linux 模板（含 `LinuxHost`）都带上它**。
+  以前它们只在 `linux-workload`（compute/data 模板）里，只跑业务容器的纯 Docker 主机
+  **拿不到容器面**。
+- **`ComputeWorkload` 回归「作业与加速卡」**（`slurm/*` + `dmesg:nvidia-xid`，仍是 `draft`）：
+  展示名从「作业、加速卡与容器」改为「作业与加速卡」。
+- **`purpose_version` 3 → 4**：**撤回** 0.5.4 加的 `dockerd` / `containerd` → `LinuxCompute` 判据。
+  面拆分后不再需要，而且把业务容器主机标成“计算节点”本身是错的。
+- `catalog_version` 12 → 13。
+
+### 升级注意
+
+- 本包要求**网关 ≥ 0.20.5-alpha**（面词表加了一项）。
+- ⚠ **已授权 `ComputeWorkload` 的站点：那台机的容器采集会停** —— 单元已经属于新面，
+  旧授权里没有它。激活后需要**重新授权 `ContainerWorkload`**（或整机重新授权）。
+  这是本次升级唯一的操作步骤。
+- 激活后 `catalog_version = 13`、`purpose_version = 4` 可确认新包生效。
+
 ## [0.5.4] - 2026-10-24
 
 ### 新增

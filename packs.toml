@@ -42,7 +42,7 @@ unit_refs = [
   "mac-misc-system",
   "mac-host-metrics",
 ]
-catalog_version = 14
+catalog_version = 15
 status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-09-22T00:00:00Z"
@@ -51,12 +51,16 @@ curated_at = "2026-09-22T00:00:00Z"
 pack_id = "macos-dev"
 platform = "macos"
 kind = "Feature"
-families = ["PrivilegeExecution", "DevToolchain"]
+# 开发机专有：提权执行、开发工具链，以及**本地数据库与存储健康**
+# （只有 MacDev 有这些——MacDaily 个人机不装库、也不跑 smartctl）。
+families = ["PrivilegeExecution", "DevToolchain", "DatabaseService", "StorageHealth"]
 unit_refs = [
   "mac-privilege-exec",
   "mac-dev-toolchain",
+  "mac-db-service",
+  "mac-storage-health",
 ]
-catalog_version = 14
+catalog_version = 15
 status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-09-22T00:00:00Z"
@@ -97,7 +101,7 @@ unit_refs = [
   "linux-container-stdout",
   "linux-docker-container-stdout",
 ]
-catalog_version = 14
+catalog_version = 15
 status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-09-22T00:00:00Z"
@@ -113,7 +117,7 @@ families = ["ComputeWorkload"]
 unit_refs = [
   "linux-compute-workload",
 ]
-catalog_version = 14
+catalog_version = 15
 status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-09-22T00:00:00Z"
@@ -127,7 +131,7 @@ unit_refs = [
   "linux-db-service",
   "linux-backup-job",
 ]
-catalog_version = 14
+catalog_version = 15
 status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-09-22T00:00:00Z"
@@ -141,7 +145,7 @@ unit_refs = [
   "linux-misc-system",
   "linux-network-service",
 ]
-catalog_version = 14
+catalog_version = 15
 status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-09-22T00:00:00Z"

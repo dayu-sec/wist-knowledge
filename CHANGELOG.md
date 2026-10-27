@@ -5,6 +5,27 @@
 
 > 说明：自 0.1.5 起维护本文件。
 
+## [0.7.0] - 2026-10-27
+
+### 新增（macOS 开发机：本地数据库与存储健康）
+
+- **`DatabaseService` 与 `StorageHealth` 开始支持 macOS**（`platforms` 加 `macos`）：
+  - 新单元 `mac-db-service`：Homebrew 装的 PostgreSQL / MySQL / Redis / MongoDB 日志
+    （Apple Silicon 在 `/opt/homebrew/var/...`，Intel 在 `/usr/local/var/...`）。
+  - 新单元 `mac-storage-health`：`smartctl`（需 `brew install smartmontools`）+
+    `/var/log/fsck_apfs*`。
+- 两者**只进 `macos-dev` 包**（MacDev 开发机），MacDaily 个人机不受影响。
+- macOS 没有 `/proc`，所以这两个单元**不用 `from_dir`**（不走进程推导）：只认 Homebrew 的约定位置，
+  异位仍然用管理面的人工覆盖（与 Linux 同一套 API）。
+- `catalog_version` 14 → 15。
+
+### 升级注意
+
+- 要求 **agentd ≥ 0.10.1-alpha**：`smartctl` 在 macOS 上位于 Homebrew 前缀下，
+  旧 agentd 只认 `/usr/sbin`，会把存储健康面报成「工具缺失」。
+- `ContainerWorkload`（容器 stdout）**仍只支持 Linux**：macOS 的容器跑在虚拟机里，
+  宿主文件系统上没有 `*-json.log`，需要新的运行时来源类型。
+
 ## [0.6.0] - 2026-10-27
 
 ### 新增（数据库面：日志目录不再写死）

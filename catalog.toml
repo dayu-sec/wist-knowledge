@@ -68,7 +68,7 @@
 # 采集就绪（能不能派下去把原文拿回来）与解析就绪（rule_ref）是**两个轴**，不互相卡：
 #   mac-reboot-power 就是“可采但解析未就绪”的样本（原文进得来，只会归在泛化的 agent.log 下）。
 
-catalog_version = 14
+catalog_version = 15
 origin = "Gateway"
 published_at = "2026-10-26T00:00:00Z"
 # 整包的最低 agentd（可选；与单元级取**高者**）。修改它等于全舰队的升级门槛，
@@ -185,7 +185,9 @@ summary_en = "Kernel and system logs, including the OOM killer."
 
 [[families]]
 id = "DatabaseService"
-platforms = ["linux"]
+# macOS：开发机上的本地库（Homebrew 的 PG / MySQL / Redis / MongoDB）已经有采集单元，
+# 它们在 `macos-dev` 包里（只给 MacDev，不污染 MacDaily 个人机）。
+platforms = ["linux", "macos"]
 name_zh = "数据库服务"
 name_en = "Database services"
 summary_zh = "数据库服务日志。"
@@ -193,7 +195,8 @@ summary_en = "Database service logs."
 
 [[families]]
 id = "StorageHealth"
-platforms = ["linux"]
+# macOS：`smartctl`（Homebrew 的 smartmontools）+ `/var/log/fsck_apfs*`，同样只在 `macos-dev` 包里。
+platforms = ["linux", "macos"]
 name_zh = "存储健康"
 name_en = "Storage health"
 summary_zh = "存储与文件系统健康（fsck / RAID / SMART / 容量）。"
@@ -440,6 +443,73 @@ status = "active"
 [[units.sources]]
 kind = "MetricInterval"
 target = "15s"
+
+# 开发机上的本地数据库（Homebrew）。**只在 `macos-dev` 包里** —— MacDaily 个人机不装。
+#
+# 为什么不走 `from_dir`：macOS 没有 `/proc`，L2b 的「从进程参数推目录」不适用；
+# 这里只认 Homebrew 的**约定位置**（Apple Silicon `/opt/homebrew`，Intel `/usr/local`），
+# 装在别处仍然靠管理面的人工覆盖（与 Linux 同一套 API）。
+[[units]]
+unit_id = "mac-db-service"
+family = "DatabaseService"
+capability = "collect_logs"
+platform = "macos"
+match = "any:path_exists:/opt/homebrew/var/log|path_exists:/opt/homebrew/var/mysql|path_exists:/usr/local/var/log|path_exists:/usr/local/var/mysql"
+rule_ref = ""
+requires_privilege = "none"
+status = "active"
+
+[[units.sources]]
+kind = "FileGlob"
+target = "/opt/homebrew/var/log/postgresql@*.log"
+
+[[units.sources]]
+kind = "FileGlob"
+target = "/opt/homebrew/var/log/redis.log"
+
+[[units.sources]]
+kind = "FileGlob"
+target = "/opt/homebrew/var/log/mongodb/*.log"
+
+[[units.sources]]
+kind = "FileGlob"
+target = "/opt/homebrew/var/mysql/*.err"
+
+[[units.sources]]
+kind = "FileGlob"
+target = "/usr/local/var/log/postgresql@*.log"
+
+[[units.sources]]
+kind = "FileGlob"
+target = "/usr/local/var/log/redis.log"
+
+[[units.sources]]
+kind = "FileGlob"
+target = "/usr/local/var/log/mongodb/*.log"
+
+[[units.sources]]
+kind = "FileGlob"
+target = "/usr/local/var/mysql/*.err"
+
+# 存储健康（macOS）：`smartctl` 需要 `brew install smartmontools`；缺件由 agentd 的
+# 导出器预检如实报「工具缺失」（不静默）。`fsck_apfs*` 是单层 glob，可执行。
+[[units]]
+unit_id = "mac-storage-health"
+family = "StorageHealth"
+capability = "collect_logs"
+platform = "macos"
+match = ""
+rule_ref = ""
+requires_privilege = "root"
+status = "active"
+
+[[units.sources]]
+kind = "Exporter"
+target = "smartctl"
+
+[[units.sources]]
+kind = "FileGlob"
+target = "/var/log/fsck_apfs*"
 
 # ── Linux ─────────────────────────────────────────────────────────
 

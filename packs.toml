@@ -42,7 +42,7 @@ unit_refs = [
   "mac-misc-system",
   "mac-host-metrics",
 ]
-catalog_version = 13
+catalog_version = 14
 status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-09-22T00:00:00Z"
@@ -56,7 +56,7 @@ unit_refs = [
   "mac-privilege-exec",
   "mac-dev-toolchain",
 ]
-catalog_version = 13
+catalog_version = 14
 status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-09-22T00:00:00Z"
@@ -97,7 +97,7 @@ unit_refs = [
   "linux-container-stdout",
   "linux-docker-container-stdout",
 ]
-catalog_version = 13
+catalog_version = 14
 status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-09-22T00:00:00Z"
@@ -113,7 +113,7 @@ families = ["ComputeWorkload"]
 unit_refs = [
   "linux-compute-workload",
 ]
-catalog_version = 13
+catalog_version = 14
 status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-09-22T00:00:00Z"
@@ -127,7 +127,7 @@ unit_refs = [
   "linux-db-service",
   "linux-backup-job",
 ]
-catalog_version = 13
+catalog_version = 14
 status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-09-22T00:00:00Z"
@@ -141,7 +141,7 @@ unit_refs = [
   "linux-misc-system",
   "linux-network-service",
 ]
-catalog_version = 13
+catalog_version = 14
 status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-09-22T00:00:00Z"

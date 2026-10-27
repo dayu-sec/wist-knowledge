@@ -68,9 +68,12 @@
 # 采集就绪（能不能派下去把原文拿回来）与解析就绪（rule_ref）是**两个轴**，不互相卡：
 #   mac-reboot-power 就是“可采但解析未就绪”的样本（原文进得来，只会归在泛化的 agent.log 下）。
 
-catalog_version = 13
+catalog_version = 14
 origin = "Gateway"
-published_at = "2026-10-24T00:00:00Z"
+published_at = "2026-10-26T00:00:00Z"
+# 整包的最低 agentd（可选；与单元级取**高者**）。修改它等于全舰队的升级门槛，
+# 属于策展决策：不达标的机器不会被派新工作，但**已在采的不会停**。
+# TODO(需要时取消)：`min_agentd_version = "0.x.y"`
 
 # ── 采集面词表 ────────────────────────────────────────────────────
 #
@@ -654,7 +657,24 @@ unit_id = "linux-db-service"
 family = "DatabaseService"
 capability = "collect_logs"
 platform = "linux"
-match = "path_exists:/var/log/postgresql|/var/log/mysql|/var/log/redis|/var/log/mongodb"
+# L3 受限搜索的**舰队级上限**（默认不开）。生效 roots = 本列表 ∩ 网关
+# `[collection] allowed_source_roots`，由网关下发；agentd 侧没有配置，改主机文件也放宽不了它。
+#
+# 打开方法：取消下面一行并 bump `catalog_version`（**必须先升级网关**：旧网关遇到未知
+# 单元字段会拒载整份知识包）。删除该行 = 关闭搜索。
+# search_roots = ["/var/lib", "/var/opt", "/data", "/srv", "/opt"]
+#
+# 本单元要求的最低 agentd 版本（可选；包级 `min_agentd_version` 与它取高者）。
+# 不达标的机器在预检里直接得到「要升级 agentd」（`agent_too_old`），授权会被拒 ——
+# 比让旧 agent 派下去报 unsupported 更好定位。
+# TODO(发版时填)：`from_dir` 需要“解析并上报日志源”的 agentd，即本版发布的版本号。
+# min_agentd_version = "0.x.y"
+# 服务证据：**端口在听** 或 日志仍在标准目录（后者保留为兜底，见下）。
+# 为什么加端口：以前只判“默认日志目录在不在”，于是把 PostgreSQL 装在 `/data/pg` 的机器
+# 直接判成「这台机器没有数据库」—— 那是**判定错误**，不是覆盖不足。
+# 为什么保留 path_exists：端口能从端点探针拿到，但「服务在、日志在标准目录、只是进程
+# 证据读不到」的机器仍然存在；两条并存，按 `(kind,target)` 去重。
+match = "any:port:5432|port:3306|port:6379|port:27017|path_exists:/var/log/postgresql|path_exists:/var/log/mysql|path_exists:/var/log/redis|path_exists:/var/log/mongodb"
 rule_ref = ""
 requires_privilege = "root"
 # 采集就绪（W4）：两种记录边界都是**日志格式固有的**，不是偏好 ——
@@ -669,6 +689,9 @@ requires_privilege = "root"
 # 只收 `.csv` / `*slow*.log`：旧写法 `/var/log/postgresql/*`、`/var/log/mysql/*` 会与它们重叠
 # （同一文件被两条来源各读一遍 → 重复采集，G5）。没有匹配不算失败，所以没开 csvlog /
 # slow log 的机器不会每轮报错。
+#
+# **双来源**：上面四条是「标准目录」的字面值（兜底），下面四条 `from_dir` 是「目录由解析/
+# 人工覆盖得出」（主力）。同一文件两边都产出时按 `(kind,target)` 去重。
 status = "active"
 
 [[units.sources]]
@@ -689,6 +712,33 @@ target = "/var/log/redis/*.log"
 [[units.sources]]
 kind = "FileGlob"
 target = "/var/log/mongodb/*.log"
+
+# 非标准目录：目录来自 agentd 的进程证据（L2a/L2b）或人工覆盖（L1），文件名仍由策展定。
+# TODO：PostgreSQL 的**文本日志**（`*.log`）还没收 —— Debian/Ubuntu 默认
+# `logging_collector = off`，日志经 rsyslog 落 `/var/log/postgresql/postgresql-YYYY-MM-DD.log`，
+# 现在这类机器只能得到 `evidence = unresolved` 占位。补齐需要 `pattern = "*.log"` +
+# `multiline = "indented"`，并在一台 Debian 夹具机上验续行切分（见设计稿 §12 TODO）。
+[[units.sources]]
+kind = "FileGlob"
+from_dir = "log_source:postgresql"
+pattern = "*.csv"
+multiline = "postgres_csv"
+
+[[units.sources]]
+kind = "FileGlob"
+from_dir = "log_source:mysql"
+pattern = "*slow*.log"
+multiline = "mysql_slow"
+
+[[units.sources]]
+kind = "FileGlob"
+from_dir = "log_source:redis"
+pattern = "*.log"
+
+[[units.sources]]
+kind = "FileGlob"
+from_dir = "log_source:mongodb"
+pattern = "*.log"
 
 [[units]]
 unit_id = "linux-storage-health"

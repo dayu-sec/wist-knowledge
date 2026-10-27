@@ -1,7 +1,8 @@
 name: Release
 
-# 打 tag 即发制品：`v0.1.0` / `v0.1.0-alpha` 都触发（预发布 tag 用后缀区分）。
-# 版本取自 tag 名（去 `v`），并与 `version.txt` 核对 —— 不一致直接失败（见 scripts/package.sh）。
+# 打 tag 即发制品（三通道：`vX.Y.Z-alpha` / `vX.Y.Z-beta` / `vX.Y.Z`）。
+# 版本取自 tag 名（去 `v`），**核心版本**要与 `version.txt` 核对 —— 不一致直接失败（见 scripts/package.sh）。
+# alpha / beta 标为 prerelease；stable 才是正式版。
 on:
   push:
     tags: ["v*.*.*"]
@@ -16,6 +17,25 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Channel vs branch（提示，不拦）
+        # 通道约定：-alpha 从 alpha 分支、-beta 从 beta、stable 从 main。
+        # 只提醒不失败：仓刚建分支 / 临时补发时不至于发不出去。
+        run: |
+          set -eu
+          case "${GITHUB_REF_NAME}" in
+            *-alpha) expected=alpha ;;
+            *-beta) expected=beta ;;
+            *) expected=main ;;
+          esac
+          if git fetch --quiet origin "+refs/heads/*:refs/remotes/origin/*" 2>/dev/null \
+            && git branch -r --contains "${GITHUB_SHA}" | grep -q "origin/${expected}$"; then
+            echo "tag ${GITHUB_REF_NAME} 来自 ${expected} 分支"
+          else
+            echo "::warning::tag ${GITHUB_REF_NAME} 的提交不在 origin/${expected} 上（通道与分支不一致）"
+          fi
 
       - name: Package knowledge
         env:
@@ -60,6 +80,8 @@ jobs:
         with:
           name: ${{ github.ref_name }}
           tag_name: ${{ github.ref_name }}
+          # alpha / beta 是预发布（不占 “latest”）；只有 stable 才是正式版。
+          prerelease: ${{ contains(github.ref_name, '-alpha') || contains(github.ref_name, '-beta') }}
           generate_release_notes: true
           files: dist/*
 
@@ -69,7 +91,7 @@ jobs:
   # 注意：`secrets` 上下文不能出现在 step 级 if 里，故启用判定放在 job 级（只看 vars）。
   #   Variables：COS_BUCKET（含 -APPID）、COS_REGION（如 ap-guangzhou）、可选 COS_PREFIX（默认取仓库名）
   #   Secrets：  COS_SECRET_ID、COS_SECRET_KEY（临时密钥再加 COS_SESSION_TOKEN）
-  # 对象键：<COS_PREFIX>/<tag>/<文件名> 与 <COS_PREFIX>/latest/<文件名>
+  # 对象键：<COS_PREFIX>/<tag>/<文件名>（预发布与正式版同样）+ <COS_PREFIX>/latest/<文件名>（**仅 stable**）。
   # 每个对象带自定义元数据 x-cos-meta-artifact-sha256=<hex>（COS 只存 MD5 ETag，sha256 得自带）。
   upload-cos:
     name: Upload artifacts to Tencent COS
@@ -154,8 +176,17 @@ jobs:
             meta="x-cos-meta-artifact-sha256:${sha}"
             coscli cp "${f}" "cos://${COS_BUCKET}/${prefix}/${TAG}/${name}" -c "${cfg}" --meta "${meta}" \
               || dump_err "上传 ${name} 失败（${TAG}）"
-            coscli cp "${f}" "cos://${COS_BUCKET}/${prefix}/latest/${name}" -c "${cfg}" --meta "${meta}" \
-              || dump_err "上传 ${name} 失败（latest）"
+            # `latest/` 只给 stable 移动：否则一个 alpha 会把“最新”指到通道版，
+            # 按 latest 拉的网关/脚本就会静默跳通道。
+            case "${TAG}" in
+              *-alpha | *-beta)
+                echo "预发布 ${TAG}：不移动 latest/"
+                ;;
+              *)
+                coscli cp "${f}" "cos://${COS_BUCKET}/${prefix}/latest/${name}" -c "${cfg}" --meta "${meta}" \
+                  || dump_err "上传 ${name} 失败（latest）"
+                ;;
+            esac
             echo "已上传 ${name}  sha256=${sha}"
           done
           echo "COS 上传完成。"

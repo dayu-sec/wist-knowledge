@@ -42,13 +42,25 @@ CI 把两个仓都 checkout 成网关仓的同级目录（见 `wist-gateway/.git
 
 ## 发布
 
-本仓按**组件**走（不是制品）：只在 `main` 开发与发布，**tag 就是 `v<version>`，不带 `-alpha` / `-beta` 通道后缀**。
-（制品的通道后缀见 `wist-gateway` / `wist-agentd` 那类仓。）
+本仓发布的是**制品**（知识包），走 `alpha → beta → main` 三通道：
+
+| 分支 | 用途 | 打什么 tag |
+| --- | --- | --- |
+| `alpha` | 开发线：新内容先在这里迭代 | `vX.Y.Z-alpha` |
+| `beta` | 候选线：从 `alpha` 合入，现场预发验证 | `vX.Y.Z-beta` |
+| `main` | 稳定线：从 `beta` 合入 | `vX.Y.Z` |
 
 **打 tag 即出可下载包**（`.github/workflows/release.yml`，tag `v*.*.*` 触发）：
 
-1. bump `version.txt`（版本权威；gx 仓里就是 `gx adm v_patch` / `v_feat`）→ commit / push
-2. 打 tag 并推送：`v<version>`（gx 仓里是 `gx adm v_tag`）
+1. 在 `alpha` 上 bump `version.txt`（版本权威；`gx adm v_patch` / `v_feat`）→ commit / push
+2. 在**对应分支**上打 tag：`gx adm tag_alpha` / `tag_beta` / `tag_stable`
+   （`version.txt` 是**核心版本**，tag 只多一个通道后缀；`package.sh` 会核对核心版本，
+   防“打了 tag 却忘了 bump”）
+3. `alpha` / `beta` 在 GitHub Release 上标为 **prerelease**；只有 `main` 的 `vX.Y.Z` 是正式版
+
+下游一律按**显式 tag** 引用（栈里是 `ARTIFACT_HOME` + `KNOWLEDGE_PATH`）：生产钉 stable、
+预发钉 beta、尝鲜钉 alpha。COS 的 `latest/` **只在 stable 时移动**，预发布不会把现场“最新”指到通道版。
+推分支/合入用普通 PR：`alpha → beta → main`，tag 只在对应分支上打（workflow 会提示不一致但不拦）。
 
 产物（GitHub Release 附件 + workflow artifact，保留 7 天）：
 
@@ -88,8 +100,9 @@ openssl pkeyutl -verify -pubin -inkey keys/knowledge-signing.pub.pem \
 配了公钥的网关会**拒收未签名/验不过**的包；没配就只记 sha256。
 私钥丢了 = 以后的新包都签不出来（要重生成并到**每台**网关换公钥）—— 所以把它存在只有发布流程能取到的地方。
 
-本地预览与自测：`./scripts/package.sh --dry-run`（版本取自 `version.txt`；显式传 `--version` 必须与它
-**完全相同**，否则拒掉——防“打了 tag 却忘了 bump”的漂移）。
+本地预览与自测：`./scripts/package.sh --dry-run`（版本取自 `version.txt`；显式传 `--version` 时
+**核心版本**必须与它相同，可带 `-alpha` / `-beta` 通道后缀）。CI（`ci.yml`）在三个分支上跑同一套门禁：
+`bash -n scripts/*.sh` + 试打包 + 五份 TOML 能解析。
 
 为什么打成包、而不是让网关读本仓目录：形态对齐既有「Agent 安装包」——管理面录入 / 离线投放 /
 版本历史 / 内容寻址。**网关侧的导入流程还没做**（生效版本指针、签名、schema 兼容校验、旧版共存），

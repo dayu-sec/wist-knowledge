@@ -1,0 +1,45 @@
+name: CI
+
+# 三通道（alpha → beta → main）共用一套门禁：只要能打包、TOML 能解析、版本对得上，就允许发。
+# **不含**签名 —— 私钥只在发布 job（release.yml）的 secret 里。
+on:
+  push:
+    branches: [alpha, beta, main]
+  pull_request:
+    branches: [alpha, beta, main]
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: Package (dry run)
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Shell syntax
+        run: bash -n scripts/*.sh
+
+      - name: Pack (dry run)
+        # 版本取自 version.txt；只验证「按当前内容能打出一个包」，不落盘、不签名。
+        run: ./scripts/package.sh --dry-run
+
+      - name: TOML parses
+        # 五份策展数据都必须是合法 TOML（网关读的是它们，打包脚本只做白名单拷贝）。
+        run: |
+          python3 - <<'PY'
+          import pathlib, tomllib
+
+          names = [
+              "catalog.toml",
+              "packs.toml",
+              "templates.toml",
+              "purpose-rules.toml",
+              "aspect-policies.toml",
+          ]
+          for name in names:
+              tomllib.loads(pathlib.Path(name).read_text(encoding="utf-8"))
+              print(f"ok {name}")
+          PY

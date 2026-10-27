@@ -16,7 +16,9 @@
 #   <out>/wist-knowledge-<version>.tar.gz.sha256
 #   <out>/wist-knowledge-<version>.tar.gz.sig      仅在 KNOWLEDGE_SIGNING_KEY 给定时产出
 #
-# 本仓按**组件**发布（不是制品）：只在 `main` 开发与发布，tag = `v<version.txt>`，无通道后缀。
+# 本仓发布的是**制品**：分支 `alpha → beta → main`，tag 带通道后缀
+#（`vX.Y.Z-alpha` / `vX.Y.Z-beta` / `vX.Y.Z`）。包名/版本带**同一条**后缀
+#（`wist-knowledge-0.8.0-alpha.tar.gz`），但核心版本必须与 `version.txt` 一致。
 # 真正的发布走 `.github/workflows/release.yml`（打 tag 触发）；本地用 `--dry-run` 预览。
 set -euo pipefail
 
@@ -38,10 +40,8 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# version.txt 是版本权威（`gx adm v_patch` / `v_feat` 改的就是它）。tag 与它不一致，
-# 说明「先打了 tag、却忘了 bump」，这种漂移要在发布口拦住。
-# version.txt 是版本权威（`gx adm v_patch` / `v_feat` 改的就是它）。本仓按**组件**走：
-# 只在 `main` 开发与发布，tag 就是 `v<version.txt>`（没有 `-alpha` / `-beta` 通道后缀 —— 那是制品）。
+# version.txt 是**核心版本**的权威（`gx adm v_patch` / `v_feat` 改的就是它）。
+# tag 可以带通道后缀（`-alpha` / `-beta`），但**核心版本**必须与它一致 ——
 # 对不上说明「先打了 tag、却忘了 bump」，这种漂移要在发布口拦住。
 FILE_VERSION=""
 if [[ -f "${ROOT}/version.txt" ]]; then
@@ -49,10 +49,25 @@ if [[ -f "${ROOT}/version.txt" ]]; then
 fi
 [[ -n "${VERSION}" ]] || VERSION="${FILE_VERSION}"
 [[ -n "${VERSION}" ]] || { echo "版本为空：version.txt 缺失或为空，用 --version 指定" >&2; exit 2; }
-if [[ -n "${FILE_VERSION}" && "${VERSION}" != "${FILE_VERSION}" ]]; then
-  echo "版本不一致：tag/参数是 ${VERSION}，version.txt 是 ${FILE_VERSION}" >&2
-  echo "  本仓按组件发布：tag 就是 v${FILE_VERSION}（不带通道后缀）。" >&2
-  echo "  先 bump version.txt（gx adm v_patch / v_feat），再打对应 tag。" >&2
+
+# 拆通道：`0.8.0-alpha` → core=0.8.0 / channel=alpha；`0.8.0` → core=0.8.0 / channel=（空）。
+CORE_VERSION="${VERSION%%-*}"
+CHANNEL=""
+if [[ "${VERSION}" != "${CORE_VERSION}" ]]; then
+  CHANNEL="${VERSION#*-}"
+  case "${CHANNEL}" in
+    alpha | beta) ;;
+    *)
+      echo "通道后缀只认 -alpha / -beta（收到：${VERSION}）" >&2
+      exit 2
+      ;;
+  esac
+fi
+
+if [[ -n "${FILE_VERSION}" && "${CORE_VERSION}" != "${FILE_VERSION}" ]]; then
+  echo "版本不一致：tag/参数的核心版本是 ${CORE_VERSION}，version.txt 是 ${FILE_VERSION}" >&2
+  echo "  tag 可以是 v${FILE_VERSION}-alpha / -beta / v${FILE_VERSION}（通道后缀照带，核心版本要对上）。" >&2
+  echo "  先 bump version.txt（gx adm v_patch / v_feat），再在对应分支上打 tag。" >&2
   exit 2
 fi
 
@@ -73,7 +88,7 @@ sha256_of() {
 
 if [[ "${DRY_RUN}" -eq 1 ]]; then
   echo "[dry-run] 不去写盘。会做的事："
-  echo "  版本        ${VERSION}（与 version.txt 一致）"
+  echo "  版本        ${VERSION}（核心 ${CORE_VERSION} 与 version.txt 一致${CHANNEL:+，通道 ${CHANNEL}}）"
   echo "  顶层目录    ${PACKAGE}/"
   echo "  内容        ${KNOWLEDGE_FILES[*]} + manifest.json"
   echo "  产物        ${TARBALL}"

@@ -109,6 +109,12 @@ for name in "${KNOWLEDGE_FILES[@]}"; do
   cp "${ROOT}/${name}" "${DEST}/${name}"
 done
 
+# 可选的兼容性声明：网关录入/激活时会读它（`requires` / `supports` / `compat_mode`）。
+# 没有它也能发包，只是网关按“兼容性未知”告警；有它才能在下发前拦住不兼容组合。
+if [[ -f "${ROOT}/compat.json" ]]; then
+  cp "${ROOT}/compat.json" "${DEST}/compat.json"
+fi
+
 # manifest.json：让包**自描述**（导入侧不必先解包就知道是哪一版、有没有被改过）。
 # 只记录文件里**已经声明**的版本，不替它们发明版本号；`files` 在 manifest 自己写盘前算，
 # 所以它列的是五份数据（manifest 自己不自我摘要）。

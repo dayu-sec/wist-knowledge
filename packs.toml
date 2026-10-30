@@ -42,7 +42,7 @@ unit_refs = [
   "mac-misc-system",
   "mac-host-metrics",
 ]
-catalog_version = 15
+catalog_version = 16
 status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-09-22T00:00:00Z"
@@ -60,7 +60,7 @@ unit_refs = [
   "mac-db-service",
   "mac-storage-health",
 ]
-catalog_version = 15
+catalog_version = 16
 status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-09-22T00:00:00Z"
@@ -101,7 +101,7 @@ unit_refs = [
   "linux-container-stdout",
   "linux-docker-container-stdout",
 ]
-catalog_version = 15
+catalog_version = 16
 status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-09-22T00:00:00Z"
@@ -117,7 +117,7 @@ families = ["ComputeWorkload"]
 unit_refs = [
   "linux-compute-workload",
 ]
-catalog_version = 15
+catalog_version = 16
 status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-09-22T00:00:00Z"
@@ -131,7 +131,7 @@ unit_refs = [
   "linux-db-service",
   "linux-backup-job",
 ]
-catalog_version = 15
+catalog_version = 16
 status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-09-22T00:00:00Z"
@@ -145,7 +145,23 @@ unit_refs = [
   "linux-misc-system",
   "linux-network-service",
 ]
-catalog_version = 15
+catalog_version = 16
 status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-09-22T00:00:00Z"
+
+# 流量检测（IDS 传感器）。**不挂基线包**：只有真的在跑 Suricata 的机器才需要它。
+# 包不带门：真正的闸门在单元的 `match = path_exists:/var/log/suricata/eve.json` 上，
+# 所以三个 Linux 模板都带上这块积木也不会有副作用 —— 没装 Suricata 的机器只是不展开这个面。
+[[pack]]
+pack_id = "linux-ids"
+platform = "linux"
+kind = "Feature"
+families = ["TrafficInspection"]
+unit_refs = [
+  "linux-suricata-eve",
+]
+catalog_version = 16
+status = "draft"
+curated_by = "platform-maintenance"
+curated_at = "2026-10-30T00:00:00Z"

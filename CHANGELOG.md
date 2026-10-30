@@ -5,6 +5,27 @@
 
 > 说明：自 0.1.5 起维护本文件。
 
+## [0.8.0] - 2026-10-30
+
+### 新增（流量检测面：Suricata `eve.json`）
+
+- **新面 `TrafficInspection`**（`catalog_version` 15 → 16）：镜像流量的入侵检测事件。
+  为什么不并进 `NetworkFirewall`：那个面是 nft / iptables 的**规则快照**（KB 级、一次一份），
+  这里是 GB/天级的事件流 —— 容量、保留期、下游消费者三样全反向。
+- **新单元 `linux-suricata-eve`**：`FileGlob /var/log/suricata/eve.json`，一行一条 JSON
+  （`multiline = "none"`），`requires_privilege = "root"`。
+  事实门是 `path_exists:/var/log/suricata/eve.json`（不用 `installed:`：容器化 / 静态编译会误判）；
+  网关的**路径探测白名单从目录里的 `path_exists` 推导**，不用另改网关。
+- **新包 `linux-ids`（Feature，不挂基线包）**：只有真在跑 Suricata 的机器才需要它；
+  三份 Linux 模板都带上这块积木，没装的机器只是不展开这个面（门在单元的 `match` 上）。
+- 解析未就绪（`rule_ref = ""`）：原文照进，归类 / 抽字段留给数据面规则。
+
+### 变更（兼容声明）
+
+- `compat.json` 的 `requires.wist-gateway`：`>=0.26.0` → **`>=0.28.0`**。
+  旧网关虽能装载本包（词表来自包本身），但 0.28.0 才是**内置词表就认识 `TrafficInspection`** 的版本
+  （旧包回落路径也一致）；把搭配关系写在包里，别让混版现场拿到一个半生效的采集面。
+
 ## [0.7.2] - 2026-10-29
 
 ### 变更（内容不变，重发一版）

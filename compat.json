@@ -1,6 +1,6 @@
 {
   "component": "wist-knowledge",
-  "requires": { "wist-gateway": ">=0.26.0" },
+  "requires": { "wist-gateway": ">=0.28.0" },
   "supports": {},
   "coexists_with": {},
   "compat_mode": false,

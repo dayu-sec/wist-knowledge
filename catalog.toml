@@ -35,7 +35,8 @@
 #   16 k8s_pod 是**同一批流**的三种归类，采集侧只采一次，归类由数据面按正文分派）、
 #   DatabaseService（Postgres csvlog / MySQL slow log；记录边界见 W4）、
 #   TrafficInspection（Suricata `eve.json` 显式单路径跟尾，一行一条 JSON；
-#   镜像部署与容量口径见 `wist-agentd/docs/design/suricata-eve-collection.md`）。
+#   固定落点 `/opt/suricata/logs/eve.json`，镜像部署与容量口径见
+#   `wist-agentd/docs/design/suricata-eve-collection.md`）。
 #   **内核日志（KernelSystem）从 W3 起只走 journald**（`Exporter journalctl-kernel`，
 #   `journalctl -k -p 4 -o json` + 游标）：文件来源（`kern.log` / `messages`）是 rsyslog 的
 #   派生副本，PRIORITY/_TRANSPORT 都会丢，且和 journal 的保留期不同步 —— 两个源并存必然重复。
@@ -70,7 +71,7 @@
 # 采集就绪（能不能派下去把原文拿回来）与解析就绪（rule_ref）是**两个轴**，不互相卡：
 #   mac-reboot-power 就是“可采但解析未就绪”的样本（原文进得来，只会归在泛化的 agent.log 下）。
 
-catalog_version = 16
+catalog_version = 17
 origin = "Gateway"
 published_at = "2026-10-26T00:00:00Z"
 # 整包的最低 agentd（可选；与单元级取**高者**）。修改它等于全舰队的升级门槛，
@@ -978,18 +979,20 @@ platform = "linux"
 # 事实门：文件在才采。没装 / 没开 Suricata 的机器不该被派这一面。
 # 不用 `installed:suricata`：容器化 / 静态编译的装法会判成「没装」，而文件才是真前置条件。
 # 网关的路径探测白名单**从目录里的 `path_exists` 推导**，加这一条就自动探。
-match = "path_exists:/var/log/suricata/eve.json"
+match = "path_exists:/opt/suricata/logs/eve.json"
 # 解析未就绪：原文照进（一行一条 JSON），归类 / 抽字段等数据面规则。
 rule_ref = ""
 requires_privilege = "root"
 # 采集就绪：显式绝对路径是所有 agentd 都支持的形态，一条来源即可派。
+# **路径是部署契约**：`/opt/suricata/logs/eve.json` 是**自定义安装**位置（不是发行版包的
+# `/var/log/suricata`）—— Suricata 的 eve-log `filename` 必须指到这里，agentd 按显式路径跟尾。
 # **不开 `search_roots`**：Suricata 的输出路径由它自己的 yaml 决定，是已知的；
 # 搜索只会放大 root 枚举面，换不到覆盖。
 status = "active"
 
 [[units.sources]]
 kind = "FileGlob"
-target = "/var/log/suricata/eve.json"
+target = "/opt/suricata/logs/eve.json"
 # 一行一条 JSON：默认读法就是它，写出来是为了让「不解析正文」在目录里可见。
 multiline = "none"
 

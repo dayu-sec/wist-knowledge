@@ -5,6 +5,19 @@
 
 > 说明：自 0.1.5 起维护本文件。
 
+## [0.8.1] - 2026-10-31
+
+### 变更（流量检测：固定落点改为 `/opt/suricata/logs/eve.json`）
+
+- **`linux-suricata-eve` 的来源与事实门改为 `/opt/suricata/logs/eve.json`**（`catalog_version` 16 → 17）：
+  现场是按**自定义安装**跑的 Suricata（不是发行版包的 `/var/log/suricata`），eve-log 的
+  `filename` 固定指向 `/opt/suricata/logs/eve.json`。
+- 为什么现在就改：v0.8.0 的这个单元还没在任何现场生效（包刚发，尚未激活），改路径的成本是
+  一次内容变更；一旦进了 fleet，已授权的 `standing_work` 会锁在旧 `catalog_version` 上，
+  改单元就不追改在跑的工作，现场会出现“官网显示已采、实际跟的是旧路径”的漂移。
+- 部署契约跟着变：Suricata 的 `outputs → eve-log: filename: /opt/suricata/logs/eve.json`，
+  logrotate / 权限也按这个目录配（详见 `wist-agentd/docs/design/suricata-eve-collection.md` §4 / §8）。
+
 ## [0.8.0] - 2026-10-30
 
 ### 新增（流量检测面：Suricata `eve.json`）

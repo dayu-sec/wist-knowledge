@@ -12,6 +12,7 @@ wist 的**知识库**——网关装载后用于：采集单元 / 包 / 工作�
 | `templates.toml` | `[content] templates_file` | 常驻工作模板（按 `machine_class` 组合包）——**决定「系统类型」建议** |
 | `purpose-rules.toml` | `[purpose] rules_file` | 用途推断规则 |
 | `aspect-policies.toml` | `[discovery] policies_file` | 发现方向策略（下发给 agent） |
+| `metrics-app-registry.toml` | `[metrics] registry_file` | `app` / `role` 推断的取值闭集（选择类 label） |
 
 > **采集面词表**：`catalog.toml` 的 `[[families]]` 是**运行期词表的唯一来源**（ID、平台归属、
 > 中英名称与说明）。网关从包装载它，新增面**不用发网关**；面元数据、采集能力契约、校验链、
@@ -19,7 +20,8 @@ wist 的**知识库**——网关装载后用于：采集单元 / 包 / 工作�
 > [`collection-family-capability-contract.md`](../../wist-design/doc/design/center/collection-family-capability-contract.md)。
 
 版本（各自在文件内声明）：`catalog_version = 17`（目录 / 包 / 模板）、`template_version = 1`、
-`policy_version = 1`（发现策略）、`purpose_version = 2`（用途规则）。**改内容要 bump 对应版本**——
+`policy_version = 1`（发现策略）、`purpose_version = 2`（用途规则）、
+`schema_version`（指标 label 注册表，见文件内声明）。**改内容要 bump 对应版本**——
 已授权的工作锁在它展开时那一版目录上（`standing_work.catalog_version`），换版不追改在跑的工作；
 用途规则那个版本是**建议的归因锚**（见网关侧 `docs/design/knowledge-content-management.md` §8.2）。
 

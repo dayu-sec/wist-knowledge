@@ -1,0 +1,171 @@
+# `app` / `role` 推断注册表 —— 策展数据
+#
+# 用途：把事实里的**高置信度证据**（服务管理器单元名 / 容器名）映射成指标上的
+# 选择类 label `app` 与 `role`（规范 `wist-agentd/docs/design/metrics-data-spec.md` §3.4）。
+#
+# ## 为什么必须有这张表
+#
+# 选择类 label 会**把指标序列分段**：写了 `app=kafka` 再改成 `app=apache-kafka`，
+# 同一台机器按 app 查的历史就断成两段、且查不回来。所以取值必须是**闭集** ——
+# 这张表就是那个闭集。网关只认这里登记过的值，命不中就留空（`{app=""}` 可查）。
+#
+# ## 匹配语义（网关侧实现，`wist-gateway/src/app/metrics_registry.rs`）
+#
+#   * 证据来源只有两类（都是「部署者命名的」，不是从可执行名/端口猜的）：
+#       - `units`：systemd 单元（`.service` / `.socket` / `.timer` 后缀会被去掉；
+#                  `kafka@broker-1` 按模板名 `kafka` 命中，实例名里的 `broker` 用来定 role）
+#       - `containers`：容器名（k8s 下就是 pod spec 里的容器名）
+#   * 任一证据命中即判定 `app`；
+#   * **一台机器命中两个及以上 app**（混跑）→ 留空：主机口径不适用（规范 §3.4 规则 5），
+#     改用进程 / 容器口径查；
+#   * `role`：在命中的那串证据里按 `-` `_` `.` `@` 切词，命中本表该 app 的 `roles` 才写；
+#     同时出现两个角色词 → 有歧义，不写。
+#
+# ## 纪律
+#
+#   * 只登记**部署期稳定**的静态角色。会随选举变的主从（Redis Cluster、Patroni、MGR）
+#     一律不写 role，用 one-hot 指标表达（规范 §3.4 规则 4）。
+#   * 改内容要 bump `schema_version`：它是「这台机器按哪版表推断的」的归因锚。
+#   * 新增系统：先在这里登记，再接入；没有登记的 app 不得上送指标。
+schema_version = "1"
+
+# ── 消息 / 队列 ────────────────────────────────────────────────────────────
+
+[[apps]]
+app = "kafka"
+units = ["kafka", "kafka@broker-1", "kafka@controller-1", "kafka-broker", "kafka-controller"]
+containers = ["kafka", "kafka-broker", "kafka-controller"]
+roles = ["broker", "controller"]
+
+[[apps]]
+app = "rabbitmq"
+units = ["rabbitmq-server"]
+containers = ["rabbitmq"]
+roles = []
+
+[[apps]]
+app = "nats"
+units = ["nats-server"]
+containers = ["nats"]
+roles = []
+
+# ── 数据存储 ──────────────────────────────────────────────────────────────
+
+[[apps]]
+app = "redis"
+units = ["redis", "redis-server", "redis-sentinel"]
+containers = ["redis", "redis-sentinel"]
+# 集群模式的主从随时切换，写死 role 会立刻变成错的；sentinel 是静态部署角色。
+roles = ["sentinel"]
+
+[[apps]]
+app = "postgres"
+units = ["postgresql", "postgresql-15", "postgresql-16", "patroni"]
+containers = ["postgres", "postgresql"]
+# 只在**静态部署**（固定主从）时可信；Patroni / 流复制自动切换的部署不要写 role。
+roles = ["primary", "replica"]
+
+[[apps]]
+app = "mysql"
+units = ["mysqld", "mysql", "mariadb"]
+containers = ["mysql", "mariadb", "percona"]
+roles = ["primary", "replica"]
+
+[[apps]]
+app = "mongodb"
+units = ["mongod"]
+containers = ["mongodb", "mongo"]
+roles = ["arbiter", "mongos", "config"]
+
+[[apps]]
+app = "elasticsearch"
+units = ["elasticsearch"]
+containers = ["elasticsearch", "opensearch"]
+# master / data 是**可变的**（选举、分片迁移）→ 不写 role，用 one-hot 指标。
+roles = []
+
+[[apps]]
+app = "clickhouse"
+units = ["clickhouse-server", "clickhouse-keeper"]
+containers = ["clickhouse", "clickhouse-server"]
+roles = ["keeper"]
+
+[[apps]]
+app = "minio"
+units = ["minio"]
+containers = ["minio"]
+roles = []
+
+# ── 协调 / 元数据 ─────────────────────────────────────────────────────────
+
+[[apps]]
+app = "zookeeper"
+units = ["zookeeper", "zookeeper-server"]
+containers = ["zookeeper"]
+roles = ["observer"]
+
+[[apps]]
+app = "etcd"
+units = ["etcd"]
+containers = ["etcd"]
+roles = ["learner"]
+
+# ── 分布式数据库（角色即进程类型，是静态的） ──────────────────────────────
+
+[[apps]]
+app = "tidb"
+units = ["tidb-server"]
+containers = ["tidb"]
+roles = ["tidb"]
+
+[[apps]]
+app = "tikv"
+units = ["tikv-server"]
+containers = ["tikv"]
+roles = ["tikv"]
+
+[[apps]]
+app = "pd"
+units = ["pd-server"]
+containers = ["pd"]
+roles = ["pd"]
+
+# ── 接入层 ────────────────────────────────────────────────────────────────
+
+[[apps]]
+app = "nginx"
+units = ["nginx"]
+containers = ["nginx"]
+roles = ["proxy"]
+
+[[apps]]
+app = "haproxy"
+units = ["haproxy"]
+containers = ["haproxy"]
+roles = ["proxy"]
+
+[[apps]]
+app = "envoy"
+units = ["envoy"]
+containers = ["envoy", "istio-proxy"]
+roles = ["proxy"]
+
+# ── 可观测 / 其它基础设施 ─────────────────────────────────────────────────
+
+[[apps]]
+app = "prometheus"
+units = ["prometheus"]
+containers = ["prometheus"]
+roles = []
+
+[[apps]]
+app = "grafana"
+units = ["grafana-server"]
+containers = ["grafana"]
+roles = []
+
+[[apps]]
+app = "victoriametrics"
+units = ["victoriametrics", "victoria-metrics"]
+containers = ["victoriametrics", "victoria-metrics"]
+roles = []

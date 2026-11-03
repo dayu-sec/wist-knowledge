@@ -5,6 +5,19 @@
 
 > 说明：自 0.1.5 起维护本文件。
 
+## [0.9.0] - 2026-11-03
+
+### 新增
+
+- **`metrics-app-registry.toml`**：指标选择类 label 的 `app` / `role` **取值闭集**。
+  网关拿 agent 上报的高置信度证据（systemd 单元名 / 容器名）来命中这张表，
+  命不中就留空（`{app=""}` 可查），绝不猜。
+  为什么必须是闭集：选择类 label 会把指标序列分段，自由发挥的取值等于把历史切断且查不回来。
+  首批登记 Kafka / RabbitMQ / NATS / Redis / PostgreSQL / MySQL / MongoDB / Elasticsearch /
+  ClickHouse / MinIO / ZooKeeper / etcd / TiDB / TiKV / PD / Nginx / HAProxy / Envoy /
+  Prometheus / Grafana / VictoriaMetrics。
+  会随选举变的主从（Redis Cluster、Patroni、MGR）**不登记 role**，用 one-hot 指标表达。
+
 ## [0.8.1] - 2026-10-31
 
 ### 变更（流量检测：固定落点改为 `/opt/suricata/logs/eve.json`）

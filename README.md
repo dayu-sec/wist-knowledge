@@ -19,7 +19,7 @@ wist 的**知识库**——网关装载后用于：采集单元 / 包 / 工作�
 > 知识包发布/回退与新增面的标准流程，见
 > [`collection-family-capability-contract.md`](../../wist-design/doc/design/center/collection-family-capability-contract.md)。
 
-版本（各自在文件内声明）：`catalog_version = 17`（目录 / 包 / 模板）、`template_version = 1`、
+版本（各自在文件内声明）：`catalog_version = 18`（目录 / 包 / 模板）、`template_version = 1`、
 `policy_version = 1`（发现策略）、`purpose_version = 2`（用途规则）、
 `schema_version`（指标 label 注册表，见文件内声明）。**改内容要 bump 对应版本**——
 已授权的工作锁在它展开时那一版目录上（`standing_work.catalog_version`），换版不追改在跑的工作；

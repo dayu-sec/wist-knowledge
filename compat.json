@@ -1,7 +1,8 @@
 {
   "component": "wist-knowledge",
-  "requires": { "wist-gateway": ">=0.28.0" },
-  "supports": {},
+  "version": "0.9.1",
+  "requires": { "wist-gateway": ">=0.40.0" },
+  "supports": { "wist-agentd": ">=0.25.0" },
   "coexists_with": {},
   "compat_mode": false,
   "bridge": [],

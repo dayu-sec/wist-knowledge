@@ -8,6 +8,8 @@
 #            MetricInterval      指标采集间隔
 #     multiline = none           一行一条（默认）
 #                 indented       行首缩进/制表符是上一条的续行（拟一整个多行记录上送）
+#                 container_cri  kubelet CRI 日志：按应用自己的头部（行首时间戳 / glog /
+#                                RuntimeLogger）切记录，不拿 CRI 的 F 当边界
 #     一个单元可有多来源；`glob:A|B` 这种在一个串里塞多路径的写法已拆成多条来源。
 #   match：装了什么 / 跑了什么 / **哪个路径在不在**才采；空 = 平台基线必采（三态求值，
 #          「没探测过」≠「不存在」，见模型 CollectionUnit.match）。
@@ -71,7 +73,7 @@
 # 采集就绪（能不能派下去把原文拿回来）与解析就绪（rule_ref）是**两个轴**，不互相卡：
 #   mac-reboot-power 就是“可采但解析未就绪”的样本（原文进得来，只会归在泛化的 agent.log 下）。
 
-catalog_version = 17
+catalog_version = 18
 origin = "Gateway"
 published_at = "2026-10-26T00:00:00Z"
 # 整包的最低 agentd（可选；与单元级取**高者**）。修改它等于全舰队的升级门槛，
@@ -856,7 +858,8 @@ platform = "linux"
 match = "path_exists:/var/log/containers"
 rule_ref = ""
 requires_privilege = "root"
-# 采集就绪：W1 的文件族 glob + W2 的结构化选源（`filters`）。
+# 采集就绪：W1 的文件族 glob + W2 的结构化选源（`filters`）+ 多行合并读法
+# `container_cri`（issue #32：应用自己的一条日志被运行时分成了很多行，按 CRI 的 `F` 合不了）。
 #
 # 为什么只有**一个**单元：13 business / 15 gateway / 16 k8s_pod 是同一批容器 stdout 的
 # 三种页面归类（D8），拆成两条 active 单元会重复采同一批文件（G5）。
@@ -872,6 +875,13 @@ status = "active"
 [[units.sources]]
 kind = "FileGlob"
 target = "/var/log/containers/*.log"
+# 读法：按**应用自己的头部**切记录（行首时间戳 / glog / `RuntimeLogger`），
+# 不拿 CRI 的 `F` 当边界 —— `F` 只说“这一行写完了”，一次事务状态输出会被拆成几十条
+# `F` 行（issue #32）。级别筛选与解析是数据面的事，采集端只保证“一条日志是一条记录”。
+#
+# 代价要说清：这要求 agentd 认得该读法（能力轴 `multiline:container_cri`）。旧 agent
+# 由网关按能力清单裁掉这条来源（预检可见），不会把正文拆散着采。
+multiline = "container_cri"
 
 [[units]]
 unit_id = "linux-docker-container-stdout"
@@ -880,7 +890,8 @@ capability = "collect_logs"
 platform = "linux"
 # 纯 Docker 主机（没有 kubelet）：容器日志在 `<docker-root>/containers/<id>/<id>-json.log`，
 # 默认 `/var/lib/docker`。与上面的 k8s 单元是**两个载体、同一批语义**（13/15/16）：
-# 读法相同（`none`：一行一条），区别只在路径与文件格式的解释位置。
+# 这边的读法是 `none`（一行一条 JSON，解包归数据面）；k8s 那边是 `container_cri`
+# （CRI 文本行封装需要按应用头合并）。两条路径的**字节形态**仍然一致，差别只在读法由谁声明。
 # 用 path_exists 而不是 `installed:docker`：判的是"日志在不在"，不是"装了什么"。
 #
 # **k8s + cri-dockerd** 的主机上两个单元会同时命中（kubelet 把 pod 日志路径指向 docker 的

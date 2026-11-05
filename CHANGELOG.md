@@ -5,6 +5,32 @@
 
 > 说明：自 0.1.5 起维护本文件。
 
+## [0.9.1] - 2026-11-05
+
+### 变更（容器 stdout：多行合并）
+
+- **`linux-container-stdout` 的读法改为 `container_cri`**（`catalog_version` 17 → 18）：
+  kubelet 的 CRI 日志里，应用的一条日志可能被拆成很多行，**每行都是 `stdout F` / `stderr F`**
+  —— `F` 只说“这一行写完了”，不能拿来合并。改为按应用自己的头部（行首时间戳 /
+  glog / `RuntimeLogger`）切记录，堆栈续行（`at …` / `Caused by:`）跟着整条走。
+  由此 WARN / ERROR 的多行正文与堆栈才能作为**一条**进数据面解析。
+- 要求 agentd 支持 `multiline = container_cri`（能力轴 `multiline:container_cri`）：
+  旧 agent 由网关按能力清单裁掉这条来源（预检可见），不会拆散着采。
+- 身份（namespace / pod / pod UID / 容器 / log_path / 节点）自 contracts 0.10.1 /
+  agentd 0.25.0 起随帧下发，采集侧不需要再改。
+
+### 变更（兼容声明）
+
+- `compat.json` 的 `requires.wist-gateway`：`>=0.28.0` → **`>=0.40.0`**。
+  网关的读法词表来自 **`wist-contracts`**：目录里新增的 `multiline = "container_cri"`
+  只有 contracts ≥ 0.10.1 的构建才认识；旧网关会在**校验目录**时把整包当成非法内容拒载
+  （不是“少一个面”，是整包进不来）。所以把搭配关系写进包里，录入时直接报
+  `package_incompatible`，而不是让现场去猜 `unknown multiline`。
+- 新增 `supports.wist-agentd: ">=0.25.0"`（**只告警、不阻止**）：0.25.0 是第一个能
+  折叠 CRI 多行记录的 agentd。更旧的 agent 不会被拒：网关按能力清单（`multiline:container_cri`）
+  裁掉这条来源，其余采集面照旧（预检里能看见“缺这个能力”）。
+- `compat.json` 补上 `version` 字段（与 `manifest.json` 同值，便于不读包也能看出版本）。
+
 ## [0.9.0] - 2026-11-03
 
 ### 新增

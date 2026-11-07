@@ -6,6 +6,10 @@
 #            Exporter            需周期导出器（二进制、DB、统一日志、审计链、dmesg，不能直接 tail）
 #            UnifiedLogPredicate 统一日志 predicate
 #            MetricInterval      指标采集间隔
+#            KafkaCluster        外部 Kafka 集群指标（target 只认 auto：端点由 agentd 自探）
+#            MysqlInstance       MySQL / TiDB 指标（同上）
+#            PostgresInstance    PostgreSQL 指标（同上）
+#            DorisCluster        Doris 指标（同上）
 #     multiline = none           一行一条（默认）
 #                 indented       行首缩进/制表符是上一条的续行（拟一整个多行记录上送）
 #                 container_cri  kubelet CRI 日志：按应用自己的头部（行首时间戳 / glog /
@@ -73,7 +77,7 @@
 # 采集就绪（能不能派下去把原文拿回来）与解析就绪（rule_ref）是**两个轴**，不互相卡：
 #   mac-reboot-power 就是“可采但解析未就绪”的样本（原文进得来，只会归在泛化的 agent.log 下）。
 
-catalog_version = 18
+catalog_version = 19
 origin = "Gateway"
 published_at = "2026-10-26T00:00:00Z"
 # 整包的最低 agentd（可选；与单元级取**高者**）。修改它等于全舰队的升级门槛，
@@ -155,6 +159,40 @@ name_zh = "主机指标"
 name_en = "Host metrics"
 summary_zh = "主机负载、内存、磁盘与开机时长等指标。"
 summary_en = "Host metrics such as load, memory, disk, and uptime."
+
+# 外部系统指标（端点只来自 agent 本机自探：source 的 `target` 只认 `auto`）。
+# 平台先只开 linux：自探读 `/proc/<pid>`，macOS 没有。
+[[families]]
+id = "KafkaMetrics"
+platforms = ["linux"]
+name_zh = "Kafka 集群指标"
+name_en = "Kafka cluster metrics"
+summary_zh = "broker 拓扑与容量、消费组积压与状态。"
+summary_en = "Broker topology and capacity, consumer lag and state."
+
+[[families]]
+id = "PostgresMetrics"
+platforms = ["linux"]
+name_zh = "PostgreSQL 指标"
+name_en = "PostgreSQL metrics"
+summary_zh = "连接、事务、IO 与复制延迟。"
+summary_en = "Connections, transactions, IO, and replication lag."
+
+[[families]]
+id = "MysqlMetrics"
+platforms = ["linux"]
+name_zh = "MySQL / TiDB 指标"
+name_en = "MySQL / TiDB metrics"
+summary_zh = "连接、线程、QPS、InnoDB 与复制。"
+summary_en = "Connections, threads, QPS, InnoDB, and replication."
+
+[[families]]
+id = "DorisMetrics"
+platforms = ["linux"]
+name_zh = "Doris 指标"
+name_en = "Doris metrics"
+summary_zh = "BE 存活、容量与 tablet。"
+summary_en = "BE liveness, capacity, and tablets."
 
 [[families]]
 id = "PrivacyTcc"
@@ -1025,3 +1063,68 @@ status = "active"
 [[units.sources]]
 kind = "MetricInterval"
 target = "15s"
+
+# ── 外部系统指标（linux）：端点 / 协议 / 凭据全部来自 agentd 本机自探，
+#    工作里只写 `target = "auto"`（写具体地址会被 agentd 判 unsupported）。
+#
+# 为什么 `requires_privilege = "root"`：自探要读**别的用户**（postgres / mysql /
+# java）的 `/proc/<pid>`，才能拿到监听端口与 netns 地址。
+#
+# 状态：Kafka 已在真集群验过（lag / state / 容量），先开 active；
+# 其余三个等真库验收后再改 active（draft 会被派单闸门挡住，不会派出去）。
+
+[[units]]
+unit_id = "linux-kafka-metrics"
+family = "KafkaMetrics"
+capability = "collect_metrics"
+platform = "linux"
+match = ""
+rule_ref = "agent_uplink"
+requires_privilege = "root"
+status = "active"
+
+[[units.sources]]
+kind = "KafkaCluster"
+target = "auto"
+
+[[units]]
+unit_id = "linux-postgres-metrics"
+family = "PostgresMetrics"
+capability = "collect_metrics"
+platform = "linux"
+match = ""
+rule_ref = "agent_uplink"
+requires_privilege = "root"
+status = "draft"
+
+[[units.sources]]
+kind = "PostgresInstance"
+target = "auto"
+
+[[units]]
+unit_id = "linux-mysql-metrics"
+family = "MysqlMetrics"
+capability = "collect_metrics"
+platform = "linux"
+match = ""
+rule_ref = "agent_uplink"
+requires_privilege = "root"
+status = "draft"
+
+[[units.sources]]
+kind = "MysqlInstance"
+target = "auto"
+
+[[units]]
+unit_id = "linux-doris-metrics"
+family = "DorisMetrics"
+capability = "collect_metrics"
+platform = "linux"
+match = ""
+rule_ref = "agent_uplink"
+requires_privilege = "root"
+status = "draft"
+
+[[units.sources]]
+kind = "DorisCluster"
+target = "auto"

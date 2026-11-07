@@ -42,7 +42,7 @@ unit_refs = [
   "mac-misc-system",
   "mac-host-metrics",
 ]
-catalog_version = 18
+catalog_version = 19
 status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-09-22T00:00:00Z"
@@ -60,7 +60,7 @@ unit_refs = [
   "mac-db-service",
   "mac-storage-health",
 ]
-catalog_version = 18
+catalog_version = 19
 status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-09-22T00:00:00Z"
@@ -83,6 +83,11 @@ families = [
   "StorageHealth",
   "HostMetrics",
   "ContainerWorkload",
+  # 外部系统指标：Kafka 已验，现在派活；其余三个单元先 draft（进包便于切状态）。
+  "KafkaMetrics",
+  "PostgresMetrics",
+  "MysqlMetrics",
+  "DorisMetrics",
 ]
 unit_refs = [
   "linux-auth-session",
@@ -100,8 +105,13 @@ unit_refs = [
   # 放进基线包，LinuxHost 也能拿到这个面（以前挂在 Feature 包上，纯 Docker 业务机拿不到）。
   "linux-container-stdout",
   "linux-docker-container-stdout",
+  # 外部系统指标（端点由 agentd 自探；draft 的单元不会被派单闸门放行）。
+  "linux-kafka-metrics",
+  "linux-postgres-metrics",
+  "linux-mysql-metrics",
+  "linux-doris-metrics",
 ]
-catalog_version = 18
+catalog_version = 19
 status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-09-22T00:00:00Z"
@@ -117,7 +127,7 @@ families = ["ComputeWorkload"]
 unit_refs = [
   "linux-compute-workload",
 ]
-catalog_version = 18
+catalog_version = 19
 status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-09-22T00:00:00Z"
@@ -131,7 +141,7 @@ unit_refs = [
   "linux-db-service",
   "linux-backup-job",
 ]
-catalog_version = 18
+catalog_version = 19
 status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-09-22T00:00:00Z"
@@ -145,7 +155,7 @@ unit_refs = [
   "linux-misc-system",
   "linux-network-service",
 ]
-catalog_version = 18
+catalog_version = 19
 status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-09-22T00:00:00Z"
@@ -161,7 +171,7 @@ families = ["TrafficInspection"]
 unit_refs = [
   "linux-suricata-eve",
 ]
-catalog_version = 18
+catalog_version = 19
 status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-10-30T00:00:00Z"

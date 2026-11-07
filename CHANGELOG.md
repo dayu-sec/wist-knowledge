@@ -5,6 +5,24 @@
 
 > 说明：自 0.1.5 起维护本文件。
 
+## [0.9.2] - 2026-11-07
+
+### 新增（外部系统指标面）
+
+- 新增四个采集面与单元（`catalog_version` 18 → 19）：
+  - `KafkaMetrics` / `linux-kafka-metrics`（`KafkaCluster`）—— **active**：
+    真集群验过 broker 拓扑、日志目录容量、消费组 lag 与 state；
+  - `PostgresMetrics` / `linux-postgres-metrics`（`PostgresInstance`）、
+    `MysqlMetrics` / `linux-mysql-metrics`（`MysqlInstance`）、
+    `DorisMetrics` / `linux-doris-metrics`（`DorisCluster`）—— **draft**：
+    单元已在基线包内，但派单闸门（`status = active`）会挡住，
+    等真库验收后再切 active（一行改动）。
+- 四个单元的 `target` 一律 `auto`：端点 / 协议 / 凭据只来自 agentd 本机自探，
+  工作里写具体地址会被 agentd 判 `unsupported`（不扩大 SSRF 面）。
+- `requires_privilege = "root"`：自探要读 `postgres` / `mysql` / `java` 等
+  **其它用户**的 `/proc/<pid>` 才能拿到监听端口与 netns 地址。
+- 平台只开 `linux`：自探读 `/proc`，macOS 没有。
+
 ## [0.9.1] - 2026-11-05
 
 ### 变更（容器 stdout：多行合并）

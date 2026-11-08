@@ -71,7 +71,15 @@ jobs:
           set -eu
           new_pkg="$(ls dist/*.tar.gz | head -1)"
           new_manifest="${RUNNER_TEMP}/manifest-new.json"
-          tar -xzOf "${new_pkg}" '*/manifest.json' > "${new_manifest}"
+          # GNU tar 不认通配符参数除非给 `--wildcards`；bsdtar（macOS）反过来不认这个选项。
+          # 两种都支持：先试 GNU 写法，失败再退到 bsdtar 写法。
+          extract_manifest() {
+            if tar -xzOf "$1" --wildcards '*/manifest.json' 2>/dev/null; then
+              return 0
+            fi
+            tar -xzOf "$1" '*/manifest.json'
+          }
+          extract_manifest "${new_pkg}" > "${new_manifest}"
 
           prev_tag="$(gh release list --exclude-drafts --limit 30 --json tagName \
             --jq "[.[] | select(.tagName != \"${TAG}\")][0].tagName")"
@@ -89,7 +97,7 @@ jobs:
           fi
           prev_pkg="$(ls "${prev_dir}"/*.tar.gz | head -1)"
           prev_manifest="${RUNNER_TEMP}/manifest-prev.json"
-          tar -xzOf "${prev_pkg}" '*/manifest.json' > "${prev_manifest}"
+          extract_manifest "${prev_pkg}" > "${prev_manifest}"
 
           python3 scripts/check_content_versions.py \
             "${prev_manifest}" "${new_manifest}" "${prev_tag}" "${TAG}"

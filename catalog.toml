@@ -77,7 +77,7 @@
 # 采集就绪（能不能派下去把原文拿回来）与解析就绪（rule_ref）是**两个轴**，不互相卡：
 #   mac-reboot-power 就是“可采但解析未就绪”的样本（原文进得来，只会归在泛化的 agent.log 下）。
 
-catalog_version = 21
+catalog_version = 22
 origin = "Gateway"
 published_at = "2026-11-08T00:00:00Z"
 # 整包的最低 agentd（可选；与单元级取**高者**）。修改它等于全舰队的升级门槛，
@@ -1054,8 +1054,9 @@ target = "15s"
 # 为什么 `requires_privilege = "root"`：自探要读**别的用户**（postgres / mysql /
 # java）的 `/proc/<pid>`，才能拿到监听端口与 netns 地址。
 #
-# 状态：Kafka 已在真集群验过（lag / state / 容量），先开 active；
-# 其余三个等真库验收后再改 active（draft 会被派单闸门挡住，不会派出去）。
+# 状态：Kafka / PostgreSQL / MySQL / Doris 均已在真实服务上验过
+# （agentd `docs/collection-capability-report.md` §4），四个单元全部 active；
+# 未发现实例时 agentd 自探不出目标，不会凭空产生指标。
 
 [[units]]
 unit_id = "linux-kafka-metrics"
@@ -1079,7 +1080,7 @@ platform = "linux"
 match = ""
 rule_ref = "agent_uplink"
 requires_privilege = "root"
-status = "draft"
+status = "active"
 
 [[units.sources]]
 kind = "PostgresInstance"
@@ -1093,7 +1094,7 @@ platform = "linux"
 match = ""
 rule_ref = "agent_uplink"
 requires_privilege = "root"
-status = "draft"
+status = "active"
 
 [[units.sources]]
 kind = "MysqlInstance"
@@ -1107,7 +1108,7 @@ platform = "linux"
 match = ""
 rule_ref = "agent_uplink"
 requires_privilege = "root"
-status = "draft"
+status = "active"
 
 [[units.sources]]
 kind = "DorisCluster"

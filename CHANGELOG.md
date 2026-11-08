@@ -5,6 +5,17 @@
 
 > 说明：自 0.1.5 起维护本文件。
 
+## [0.9.5-alpha] - 2026-11-08
+
+### 变更
+
+- **PostgreSQL / MySQL / Doris 指标单元转为 `active`**：三个单元都已在真实服务上验过
+  （PG 11 facts、MySQL 13 facts、Doris 4.1 4 facts，见 agentd 采集能力报告 §4），
+  Doris 4.x 的 `Host` 列名缺陷也已修复。`DatabaseMetrics` 从此可派单；
+  没有对应实例的机器 agentd 自探不出目标，不会凭空产生指标。
+  - TiDB 走同一个 `MysqlInstance` 来源，协议兼容，但未单独实测。
+- `catalog_version` 21 → 22；`template_version` 3 → 4（仅随目录版本抬升，模板组成未变）。
+
 ## [0.9.4-alpha] - 2026-11-08
 
 ### 变更（删除已废弃的采集面）

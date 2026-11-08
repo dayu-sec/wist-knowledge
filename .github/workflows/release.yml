@@ -59,6 +59,41 @@ jobs:
           fi
           ./scripts/package.sh --version "${GITHUB_REF_NAME#v}" --out dist
 
+      - name: Content version monotonic（改了内容必须升版本）
+        # 「改了目录却忘了升 `catalog_version`」在本仓最容易发生：包能打出来、网关也能装，
+        # 没有任何一步会拦。但下游按 `catalog_version` 判新旧 / 判回滚 / 锁 `StandingWork` ——
+        # 版本不动等于两份不同内容共用一个版本号，回滚会回错东西。
+        # 上一版拿不到（首个发布 / 网络失败）时只告警，不阻塞。
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -eu
+          new_pkg="$(ls dist/*.tar.gz | head -1)"
+          new_manifest="${RUNNER_TEMP}/manifest-new.json"
+          tar -xzOf "${new_pkg}" '*/manifest.json' > "${new_manifest}"
+
+          prev_tag="$(gh release list --exclude-drafts --limit 30 --json tagName \
+            --jq "[.[] | select(.tagName != \"${TAG}\")][0].tagName")"
+          case "${prev_tag}" in
+            '' | null)
+              echo "::warning::找不到上一版 release，跳过内容版本单调性校验"
+              exit 0
+              ;;
+          esac
+
+          prev_dir="$(mktemp -d)"
+          if ! gh release download "${prev_tag}" --pattern '*.tar.gz' --dir "${prev_dir}" --clobber >/dev/null 2>&1; then
+            echo "::warning::下载上一版 ${prev_tag} 失败，跳过内容版本单调性校验"
+            exit 0
+          fi
+          prev_pkg="$(ls "${prev_dir}"/*.tar.gz | head -1)"
+          prev_manifest="${RUNNER_TEMP}/manifest-prev.json"
+          tar -xzOf "${prev_pkg}" '*/manifest.json' > "${prev_manifest}"
+
+          python3 scripts/check_content_versions.py \
+            "${prev_manifest}" "${new_manifest}" "${prev_tag}" "${TAG}"
+
       - uses: actions/upload-artifact@v7
         with:
           name: wist-knowledge-${{ github.ref_name }}

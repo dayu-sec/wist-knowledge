@@ -16,6 +16,9 @@
   `compat.json` 的 `version` 必须等于 `version.txt`。
 - **CI 通道校验**：tag 与分支不一致从 warning 改为**失败**；补发场景用仓库变量
   `ALLOW_CHANNEL_MISMATCH=true` 放行并留 warning。
+- **内容版本单调性（CI）**：新增 `scripts/check_content_versions.py` —— 五份数据里任何一份
+  的 sha256 变了，它对应的版本（`catalog_version` / `template_version` / `policy_version` /
+  `purpose_version`）必须**严格变大**；版本倒退同样失败。取不到上一版时只告警不阻塞。
 - `compat.json` 的 `version` 修正为 `0.9.2`（此前停在 `0.9.1`，与实际版本漂开）。
 - `alpha` / `beta` 分支对齐到 `main`（此前两个分支停在 10-27 的旧快照，内容实际都在 `main` 上迭代）。
 

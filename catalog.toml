@@ -77,9 +77,9 @@
 # 采集就绪（能不能派下去把原文拿回来）与解析就绪（rule_ref）是**两个轴**，不互相卡：
 #   mac-reboot-power 就是“可采但解析未就绪”的样本（原文进得来，只会归在泛化的 agent.log 下）。
 
-catalog_version = 20
+catalog_version = 21
 origin = "Gateway"
-published_at = "2026-10-26T00:00:00Z"
+published_at = "2026-11-08T00:00:00Z"
 # 整包的最低 agentd（可选；与单元级取**高者**）。修改它等于全舰队的升级门槛，
 # 属于策展决策：不达标的机器不会被派新工作，但**已在采的不会停**。
 # TODO(需要时取消)：`min_agentd_version = "0.x.y"`
@@ -177,41 +177,6 @@ name_zh = "消息队列指标"
 name_en = "Message queue metrics"
 summary_zh = "分布式消息队列指标（broker 拓扑与容量、消费组积压与状态）。"
 summary_en = "Distributed message queue metrics (broker topology and capacity, consumer lag and state)."
-
-# —— 以下四个面**已废弃**（0.9.3 起没有单元）——
-# 保留原因（1）：历史数据里已有这些值，删了就无法按面回溯；
-# 保留原因（2）：词表是**追加式**的，不得删面（网关 check_vocabulary_append_only）。
-[[families]]
-id = "KafkaMetrics"
-platforms = ["linux"]
-name_zh = "Kafka 集群指标（已废弃）"
-name_en = "Kafka cluster metrics (deprecated)"
-summary_zh = "已废弃：现为 MessageQueueMetrics。保留仅为历史数据可解释。"
-summary_en = "Deprecated: use MessageQueueMetrics. Retained only so historical records still resolve."
-
-[[families]]
-id = "PostgresMetrics"
-platforms = ["linux"]
-name_zh = "PostgreSQL 指标（已废弃）"
-name_en = "PostgreSQL metrics (deprecated)"
-summary_zh = "已废弃：现为 DatabaseMetrics。保留仅为历史数据可解释。"
-summary_en = "Deprecated: use DatabaseMetrics. Retained only so historical records still resolve."
-
-[[families]]
-id = "MysqlMetrics"
-platforms = ["linux"]
-name_zh = "MySQL / TiDB 指标（已废弃）"
-name_en = "MySQL / TiDB metrics (deprecated)"
-summary_zh = "已废弃：现为 DatabaseMetrics。保留仅为历史数据可解释。"
-summary_en = "Deprecated: use DatabaseMetrics. Retained only so historical records still resolve."
-
-[[families]]
-id = "DorisMetrics"
-platforms = ["linux"]
-name_zh = "Doris 指标（已废弃）"
-name_en = "Doris metrics (deprecated)"
-summary_zh = "已废弃：现为 DatabaseMetrics。保留仅为历史数据可解释。"
-summary_en = "Deprecated: use DatabaseMetrics. Retained only so historical records still resolve."
 
 [[families]]
 id = "PrivacyTcc"

@@ -52,14 +52,15 @@ status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-09-22T00:00:00Z"
 
-# 数据机 = 公共基线 + 作业包 + 数据包 + 运维杂项包（**引用**，不再抄 linux-compute 的清单）。
+# 数据机 = 公共基线 + 作业包 + 数据包 + 消息队列包 + 运维杂项包（**引用**，不再抄 linux-compute 的清单）。
 [[template]]
 template_id = "linux-data"
 machine_class = "LinuxData"
 platform = "linux"
 pack_refs = ["linux-base", "linux-workload", "linux-datastore", "linux-messaging", "linux-ops-extra", "linux-ids"]
 catalog_version = 20
-template_version = 1
+# 2：组成变化（新增 `linux-messaging`）
+template_version = 2
 status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-09-22T00:00:00Z"

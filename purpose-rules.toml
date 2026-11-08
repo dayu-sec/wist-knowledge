@@ -24,7 +24,7 @@
 # 改内容必须 bump `purpose_version`：它是**归因锚** —— 建议里记的 `rule_set_id` 只说
 # “哪一册”，不说“哪一版”；只改值不改版本，就再也说不清“这条建议是哪版规则算的”
 # （网关侧见 docs/design/knowledge-content-management.md §8.2）。
-purpose_version = 4
+purpose_version = 5
 
 [[rule_set]]
 rule_set_id = "macos-v1"
@@ -258,6 +258,15 @@ weight = 15
 rule_id = "linux-data-postgres"
 kind = "process"
 pattern = "postgres"
+machine_class = "LinuxData"
+weight = 40
+
+[[rule_set.rules]]
+rule_id = "linux-data-kafka"
+kind = "process"
+# 只跑 Kafka 的机器必须能归到 LinuxData，否则拿不到 `linux-messaging` 包（
+# 指标面已从基线包移出，不再靠「所有 Linux 机都带」兜底）。
+pattern = "kafka"
 machine_class = "LinuxData"
 weight = 40
 

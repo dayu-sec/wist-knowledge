@@ -22,6 +22,32 @@
 - `compat.json` 的 `version` 修正为 `0.9.2`（此前停在 `0.9.1`，与实际版本漂开）。
 - `alpha` / `beta` 分支对齐到 `main`（此前两个分支停在 10-27 的旧快照，内容实际都在 `main` 上迭代）。
 
+## [0.9.3] - 2026-11-08
+
+### 变更（采集面按领域收敛）
+
+- **数据库指标合成一个面**：`PostgresMetrics` / `MysqlMetrics` / `DorisMetrics`
+  → 新增 `DatabaseMetrics`。判据是模型自己的定义（面描述「要看见什么」，不是「从哪拿」）：
+  产品差异由单元 + `CollectionSourceKind` 承载，指标命名空间（`pg_*` / `mysql_*` / `doris_*`）**仍各自独立**。
+- **消息队列指标单独成面**：`KafkaMetrics` → 新增 `MessageQueueMetrics`（看的是 broker 拓扑与消费组 lag，
+  与数据库不是同一个「要看见什么」）。
+- 四个旧面**保留在词表里但不再有单元**（标“已废弃”）：历史数据可解释，且词表追加式校验不得删面。
+- `catalog_version` 19 → 20。
+
+### 变更（包归属：指标不再进基线包）
+
+- 四个指标单元从 `linux-base` **移出** —— 在基线包等于「给每台 Linux 机（含纯 nginx 机）都授权了数据库采集」。
+- `linux-datastore` 增加 `DatabaseMetrics`（3 个 DB 指标单元），语义成「数据服务」：
+  数据库日志 + 备份 + 数据库指标。
+- 新增 `linux-messaging` 包（`MessageQueueMetrics` + `linux-kafka-metrics`），由 `linux-data` 模板引用。
+- 新增用途规则 `linux-data-kafka`（进程 `kafka` → `LinuxData`）：否则只跑 Kafka 的机器落 `LinuxHost`，
+  拿不到 `linux-messaging`。`purpose_version` 4 → 5。
+
+### 升级注意
+
+- 已授权的工作锁在旧 `catalog_version`，**不会被自动改写**；要让新归属生效，需要重新授权。
+- 升级后，**纯业务机（`LinuxHost`）不再展开数据库/消息队列指标面**。
+
 ## [0.9.2] - 2026-11-07
 
 ### 新增（外部系统指标面）

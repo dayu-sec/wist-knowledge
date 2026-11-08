@@ -77,7 +77,7 @@
 # 采集就绪（能不能派下去把原文拿回来）与解析就绪（rule_ref）是**两个轴**，不互相卡：
 #   mac-reboot-power 就是“可采但解析未就绪”的样本（原文进得来，只会归在泛化的 agent.log 下）。
 
-catalog_version = 19
+catalog_version = 20
 origin = "Gateway"
 published_at = "2026-10-26T00:00:00Z"
 # 整包的最低 agentd（可选；与单元级取**高者**）。修改它等于全舰队的升级门槛，
@@ -163,36 +163,55 @@ summary_en = "Host metrics such as load, memory, disk, and uptime."
 # 外部系统指标（端点只来自 agent 本机自探：source 的 `target` 只认 `auto`）。
 # 平台先只开 linux：自探读 `/proc/<pid>`，macOS 没有。
 [[families]]
+id = "DatabaseMetrics"
+platforms = ["linux"]
+name_zh = "数据库指标"
+name_en = "Database metrics"
+summary_zh = "数据库运行指标（连接、事务、IO、复制、容量、tablet）。产品差异由单元与来源类型承载。"
+summary_en = "Database runtime metrics (connections, transactions, IO, replication, capacity, tablets); product differences live in units."
+
+[[families]]
+id = "MessageQueueMetrics"
+platforms = ["linux"]
+name_zh = "消息队列指标"
+name_en = "Message queue metrics"
+summary_zh = "分布式消息队列指标（broker 拓扑与容量、消费组积压与状态）。"
+summary_en = "Distributed message queue metrics (broker topology and capacity, consumer lag and state)."
+
+# —— 以下四个面**已废弃**（0.9.3 起没有单元）——
+# 保留原因（1）：历史数据里已有这些值，删了就无法按面回溯；
+# 保留原因（2）：词表是**追加式**的，不得删面（网关 check_vocabulary_append_only）。
+[[families]]
 id = "KafkaMetrics"
 platforms = ["linux"]
-name_zh = "Kafka 集群指标"
-name_en = "Kafka cluster metrics"
-summary_zh = "broker 拓扑与容量、消费组积压与状态。"
-summary_en = "Broker topology and capacity, consumer lag and state."
+name_zh = "Kafka 集群指标（已废弃）"
+name_en = "Kafka cluster metrics (deprecated)"
+summary_zh = "已废弃：现为 MessageQueueMetrics。保留仅为历史数据可解释。"
+summary_en = "Deprecated: use MessageQueueMetrics. Retained only so historical records still resolve."
 
 [[families]]
 id = "PostgresMetrics"
 platforms = ["linux"]
-name_zh = "PostgreSQL 指标"
-name_en = "PostgreSQL metrics"
-summary_zh = "连接、事务、IO 与复制延迟。"
-summary_en = "Connections, transactions, IO, and replication lag."
+name_zh = "PostgreSQL 指标（已废弃）"
+name_en = "PostgreSQL metrics (deprecated)"
+summary_zh = "已废弃：现为 DatabaseMetrics。保留仅为历史数据可解释。"
+summary_en = "Deprecated: use DatabaseMetrics. Retained only so historical records still resolve."
 
 [[families]]
 id = "MysqlMetrics"
 platforms = ["linux"]
-name_zh = "MySQL / TiDB 指标"
-name_en = "MySQL / TiDB metrics"
-summary_zh = "连接、线程、QPS、InnoDB 与复制。"
-summary_en = "Connections, threads, QPS, InnoDB, and replication."
+name_zh = "MySQL / TiDB 指标（已废弃）"
+name_en = "MySQL / TiDB metrics (deprecated)"
+summary_zh = "已废弃：现为 DatabaseMetrics。保留仅为历史数据可解释。"
+summary_en = "Deprecated: use DatabaseMetrics. Retained only so historical records still resolve."
 
 [[families]]
 id = "DorisMetrics"
 platforms = ["linux"]
-name_zh = "Doris 指标"
-name_en = "Doris metrics"
-summary_zh = "BE 存活、容量与 tablet。"
-summary_en = "BE liveness, capacity, and tablets."
+name_zh = "Doris 指标（已废弃）"
+name_en = "Doris metrics (deprecated)"
+summary_zh = "已废弃：现为 DatabaseMetrics。保留仅为历史数据可解释。"
+summary_en = "Deprecated: use DatabaseMetrics. Retained only so historical records still resolve."
 
 [[families]]
 id = "PrivacyTcc"
@@ -1075,7 +1094,7 @@ target = "15s"
 
 [[units]]
 unit_id = "linux-kafka-metrics"
-family = "KafkaMetrics"
+family = "MessageQueueMetrics"
 capability = "collect_metrics"
 platform = "linux"
 match = ""
@@ -1089,7 +1108,7 @@ target = "auto"
 
 [[units]]
 unit_id = "linux-postgres-metrics"
-family = "PostgresMetrics"
+family = "DatabaseMetrics"
 capability = "collect_metrics"
 platform = "linux"
 match = ""
@@ -1103,7 +1122,7 @@ target = "auto"
 
 [[units]]
 unit_id = "linux-mysql-metrics"
-family = "MysqlMetrics"
+family = "DatabaseMetrics"
 capability = "collect_metrics"
 platform = "linux"
 match = ""
@@ -1117,7 +1136,7 @@ target = "auto"
 
 [[units]]
 unit_id = "linux-doris-metrics"
-family = "DorisMetrics"
+family = "DatabaseMetrics"
 capability = "collect_metrics"
 platform = "linux"
 match = ""

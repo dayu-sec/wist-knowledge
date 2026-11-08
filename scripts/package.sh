@@ -9,6 +9,7 @@
 #   ./scripts/package.sh                        # 版本取自 version.txt
 #   ./scripts/package.sh --version 0.1.1
 #   ./scripts/package.sh --out dist
+#   ./scripts/package.sh --allow-draft          # 允许 stable 包含 draft 单元（默认禁止）
 #   ./scripts/package.sh --dry-run              # 只打印会做什么，不落盘
 #
 # 产物：
@@ -19,6 +20,12 @@
 # 本仓发布的是**制品**：分支 `alpha → beta → main`，tag 带通道后缀
 #（`vX.Y.Z-alpha` / `vX.Y.Z-beta` / `vX.Y.Z`）。包名/版本带**同一条**后缀
 #（`wist-knowledge-0.8.0-alpha.tar.gz`），但核心版本必须与 `version.txt` 一致。
+#
+# **成熟度（maturity）由通道自动推导，不允许手填**：
+#   `-alpha` → `experimental` / `-beta` → `preview` / 无后缀 → `stable`
+# 它写进 `manifest.json`，供没有 Git 上下文的消费方（网关）判断能不能装。
+# 另两道闸门：`stable` 包**不得含 draft 单元**（要带就 `--allow-draft`）；
+# `compat.json` 的 `version` 必须等于 `version.txt`。
 # 真正的发布走 `.github/workflows/release.yml`（打 tag 触发）；本地用 `--dry-run` 预览。
 set -euo pipefail
 
@@ -26,6 +33,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OUT="${ROOT}/dist"
 VERSION=""
 DRY_RUN=0
+ALLOW_DRAFT=0
 
 # 包内容 = 五份策展数据（**白名单**，不是 `*`：目录里以后多出别的东西不该被顺手打进制品）。
 KNOWLEDGE_FILES=(catalog.toml packs.toml templates.toml purpose-rules.toml aspect-policies.toml)
@@ -34,6 +42,7 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --version) VERSION="${2:-}"; shift 2 ;;
     --out) OUT="${2:-}"; shift 2 ;;
+    --allow-draft) ALLOW_DRAFT=1; shift ;;
     --dry-run) DRY_RUN=1; shift ;;
     -h|--help) sed -n '2,20p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "未知参数：$1（--help 看用法）" >&2; exit 2 ;;
@@ -64,6 +73,14 @@ if [[ "${VERSION}" != "${CORE_VERSION}" ]]; then
   esac
 fi
 
+# 成熟度由通道推导（**不手填**）：它是给消费方看的「这份包能不能上生产」，
+# 而不是内容就绪度（那是单元的 status）。
+MATURITY="stable"
+case "${CHANNEL}" in
+  alpha) MATURITY="experimental" ;;
+  beta) MATURITY="preview" ;;
+esac
+
 if [[ -n "${FILE_VERSION}" && "${CORE_VERSION}" != "${FILE_VERSION}" ]]; then
   echo "版本不一致：tag/参数的核心版本是 ${CORE_VERSION}，version.txt 是 ${FILE_VERSION}" >&2
   echo "  tag 可以是 v${FILE_VERSION}-alpha / -beta / v${FILE_VERSION}（通道后缀照带，核心版本要对上）。" >&2
@@ -74,6 +91,17 @@ fi
 for name in "${KNOWLEDGE_FILES[@]}"; do
   [[ -f "${ROOT}/${name}" ]] || { echo "缺文件：${ROOT}/${name}" >&2; exit 2; }
 done
+
+# `compat.json` 的 `version` 就是组件版本，不能与 `version.txt` 漂开 ——
+# 漂开时网关会按错版本判兼容，而且没有任何地方会报错。
+if [[ -f "${ROOT}/compat.json" ]]; then
+  COMPAT_VERSION="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1], encoding="utf-8")).get("version", ""))' "${ROOT}/compat.json")"
+  if [[ -n "${COMPAT_VERSION}" && "${COMPAT_VERSION}" != "${FILE_VERSION}" ]]; then
+    echo "compat.json 的 version（${COMPAT_VERSION}）与 version.txt（${FILE_VERSION}）不一致" >&2
+    echo "  bump 版本时两者要一起改；否则网关会按错误的组件版本判兼容。" >&2
+    exit 2
+  fi
+fi
 
 PACKAGE="wist-knowledge-${VERSION}"
 TARBALL="${OUT}/${PACKAGE}.tar.gz"
@@ -89,6 +117,7 @@ sha256_of() {
 if [[ "${DRY_RUN}" -eq 1 ]]; then
   echo "[dry-run] 不去写盘。会做的事："
   echo "  版本        ${VERSION}（核心 ${CORE_VERSION} 与 version.txt 一致${CHANNEL:+，通道 ${CHANNEL}}）"
+  echo "  成熟度      ${MATURITY}"
   echo "  顶层目录    ${PACKAGE}/"
   echo "  内容        ${KNOWLEDGE_FILES[*]} + manifest.json"
   echo "  产物        ${TARBALL}"
@@ -118,13 +147,15 @@ fi
 # manifest.json：让包**自描述**（导入侧不必先解包就知道是哪一版、有没有被改过）。
 # 只记录文件里**已经声明**的版本，不替它们发明版本号；`files` 在 manifest 自己写盘前算，
 # 所以它列的是五份数据（manifest 自己不自我摘要）。
-python3 - "${ROOT}" "${DEST}" "${VERSION}" <<'PY'
+python3 - "${ROOT}" "${DEST}" "${VERSION}" "${MATURITY}" "${ALLOW_DRAFT}" <<'PY'
 import hashlib, json, pathlib, re, subprocess, sys
 from datetime import datetime, timezone
 
 root = pathlib.Path(sys.argv[1])
 dest = pathlib.Path(sys.argv[2])
 version = sys.argv[3]
+maturity = sys.argv[4]
+allow_draft = sys.argv[5] == "1"
 
 
 def read(name):
@@ -165,18 +196,54 @@ except Exception:
 
 files = {path.name: hashlib.sha256(path.read_bytes()).hexdigest() for path in sorted(dest.iterdir())}
 
+# 内容就绪度：按单元 `status` 计数。它与包成熟度是两回事 —— 前者是「这个采法能不能派单」，
+# 后者是「这份目录能不能上生产」。
+catalog_text = read("catalog.toml")
+unit_blocks = catalog_text.split("[[units]]")[1:]
+counts = {"active": 0, "draft": 0, "deprecated": 0}
+draft_units = []
+for block in unit_blocks:
+    status = re.search(r'(?m)^status\s*=\s*"([^"]+)"', block)
+    state = status.group(1) if status else "active"
+    counts[state] = counts.get(state, 0) + 1
+    if state == "draft":
+        unit_id = re.search(r'(?m)^unit_id\s*=\s*"([^"]+)"', block)
+        draft_units.append(unit_id.group(1) if unit_id else "?")
+
+# 成熟度闸门：「稳定版目录里带不可用单元」本身就是矛盾。要带 draft 发，
+# 只能走 -alpha / -beta，或显式 --allow-draft（会写进 manifest 留痕）。
+if maturity == "stable" and draft_units and not allow_draft:
+    print(
+        f"stable 包不得包含 draft 单元（共 {len(draft_units)} 个）：{', '.join(draft_units)}\n"
+        "  要么把它们改 active，要么把包发成 -beta / -alpha，要么显式 --allow-draft（会留痕）。",
+        file=sys.stderr,
+    )
+    sys.exit(2)
+
 manifest = {
     "name": "wist-knowledge",
     "version": version,
+    "maturity": maturity,
+    "allow_draft": allow_draft,
     "created_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
     "commit": commit,
     "content_versions": content_versions,
+    "counts": {
+        "units": counts,
+        "families": len(re.findall(r'(?m)^\[\[families\]\]', catalog_text)),
+        "packs": len(re.findall(r'(?m)^\[\[pack\]\]', read("packs.toml"))),
+        "templates": len(re.findall(r'(?m)^\[\[template\]\]', read("templates.toml"))),
+    },
     "files": files,
 }
 (dest / "manifest.json").write_text(
     json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
 )
 print(f"  manifest.json  content_versions={content_versions} commit={commit or '-'}")
+print(
+    f"  成熟度      {maturity}（units: "
+    f"active={counts['active']} draft={counts['draft']} deprecated={counts['deprecated']}）"
+)
 PY
 
 mkdir -p "${OUT}"

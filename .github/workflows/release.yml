@@ -20,9 +20,12 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Channel vs branch（提示，不拦）
+      - name: Channel vs branch（强校验）
         # 通道约定：-alpha 从 alpha 分支、-beta 从 beta、stable 从 main。
-        # 只提醒不失败：仓刚建分支 / 临时补发时不至于发不出去。
+        # 不一致**直接失败** —— 通道后缀是「未验收」的信号，发错分支等于把 alpha 内容标成 stable。
+        # 例外（补发/仓刚建）：仓库变量 `ALLOW_CHANNEL_MISMATCH=true` 时降级为警告，以便留痕。
+        env:
+          ALLOW_CHANNEL_MISMATCH: ${{ vars.ALLOW_CHANNEL_MISMATCH }}
         run: |
           set -eu
           case "${GITHUB_REF_NAME}" in
@@ -33,9 +36,14 @@ jobs:
           if git fetch --quiet origin "+refs/heads/*:refs/remotes/origin/*" 2>/dev/null \
             && git branch -r --contains "${GITHUB_SHA}" | grep -q "origin/${expected}$"; then
             echo "tag ${GITHUB_REF_NAME} 来自 ${expected} 分支"
-          else
-            echo "::warning::tag ${GITHUB_REF_NAME} 的提交不在 origin/${expected} 上（通道与分支不一致）"
+            exit 0
           fi
+          if [ "${ALLOW_CHANNEL_MISMATCH:-false}" = "true" ]; then
+            echo "::warning::tag ${GITHUB_REF_NAME} 的提交不在 origin/${expected} 上（ALLOW_CHANNEL_MISMATCH=true，放行）"
+            exit 0
+          fi
+          echo "::error::tag ${GITHUB_REF_NAME} 必须打在 origin/${expected} 上（通道与分支不一致；tag 分支 ${GITHUB_REF}）"
+          exit 1
 
       - name: Package knowledge
         env:

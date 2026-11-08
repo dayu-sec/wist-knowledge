@@ -5,6 +5,20 @@
 
 > 说明：自 0.1.5 起维护本文件。
 
+## [未发布] - 2026-11-08
+
+### 变更（发布流程）
+
+- **成熟度（maturity）由通道自动推导**：`manifest.json` 新增 `maturity` ——
+  `-alpha` → `experimental`、`-beta` → `preview`、无后缀 → `stable`；**不允许手填**。
+  同时新增 `counts`（单元按 `status` 计数 + 面/包/模板数），供消费方判断内容就绪度。
+- **打包闸门**：`stable` 包不得包含 `draft` 单元（要带必须显式 `--allow-draft`，会写进 manifest 留痕）；
+  `compat.json` 的 `version` 必须等于 `version.txt`。
+- **CI 通道校验**：tag 与分支不一致从 warning 改为**失败**；补发场景用仓库变量
+  `ALLOW_CHANNEL_MISMATCH=true` 放行并留 warning。
+- `compat.json` 的 `version` 修正为 `0.9.2`（此前停在 `0.9.1`，与实际版本漂开）。
+- `alpha` / `beta` 分支对齐到 `main`（此前两个分支停在 10-27 的旧快照，内容实际都在 `main` 上迭代）。
+
 ## [0.9.2] - 2026-11-07
 
 ### 新增（外部系统指标面）

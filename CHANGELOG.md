@@ -5,6 +5,25 @@
 
 > 说明：自 0.1.5 起维护本文件。
 
+## [0.10.0-alpha] - 2026-11-08
+
+### 新增
+
+- **macOS 数据库指标**：`DatabaseMetrics` 的 `platforms` 加 `macos`，新增三个单元
+  `mac-postgres-metrics` / `mac-mysql-metrics` / `mac-doris-metrics`（`collect_metrics`，
+  来源仍是 `auto` —— 端点由 agentd 自探，不接受手写地址）。
+  - 单元自带门控：`container:<关键词>`（容器名）/ `port:<默认端口>` / Homebrew 数据目录；
+    `macos-dev` 是开发机大包，不门控会把“没装库”的机器也派上活。
+    `container:` 是为 **Docker / OrbStack 里的库**加的：宿主看不到它们的进程，
+    发布端口又常落在临时端口段（不进 `port:` 事实）。
+  - 三个单元都声明 `min_agentd_version = "0.30.0"`：旧 agentd 在 macOS 上没有这条
+    发现链（`/proc`），预检会直接说「要升级 agentd」而不是派下去报 `unsupported`。
+  - 覆盖边界：原生 / Homebrew 安装走进程自探；**Docker / OrbStack 里的库**走容器发布端口
+    （凭据口径 `container-<name>`）。没发布到宿主的容器与远端库不在这条路上。
+  - Doris 没有 Homebrew 公式、装法不固定，只用端口（FE 的 MySQL 协议口 `9030`）门控。
+- `macos-dev` 包加入 `DatabaseMetrics` 与上述三个单元。
+- `catalog_version` 22 → 23。
+
 ## [0.9.5-alpha] - 2026-11-08
 
 ### 变更

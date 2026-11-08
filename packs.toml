@@ -42,7 +42,7 @@ unit_refs = [
   "mac-misc-system",
   "mac-host-metrics",
 ]
-catalog_version = 22
+catalog_version = 23
 status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-09-22T00:00:00Z"
@@ -53,14 +53,27 @@ platform = "macos"
 kind = "Feature"
 # 开发机专有：提权执行、开发工具链，以及**本地数据库与存储健康**
 # （只有 MacDev 有这些——MacDaily 个人机不装库、也不跑 smartctl）。
-families = ["PrivilegeExecution", "DevToolchain", "DatabaseService", "StorageHealth"]
+#
+# `DatabaseMetrics` 是**指标**（本机自探端点，见 agentd `discovery/db_source.rs`）；
+# `DatabaseService` 是数据库自己的**日志**。两者不能合面。macOS 的三个指标单元都带
+# `match` 门控（端口 / Homebrew 数据目录），所以这里的开发机大包不会把“没装库”的机器派上活。
+families = [
+  "PrivilegeExecution",
+  "DevToolchain",
+  "DatabaseService",
+  "DatabaseMetrics",
+  "StorageHealth",
+]
 unit_refs = [
   "mac-privilege-exec",
   "mac-dev-toolchain",
   "mac-db-service",
+  "mac-postgres-metrics",
+  "mac-mysql-metrics",
+  "mac-doris-metrics",
   "mac-storage-health",
 ]
-catalog_version = 22
+catalog_version = 23
 status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-09-22T00:00:00Z"
@@ -103,7 +116,7 @@ unit_refs = [
   # 外部系统指标（DB / MQ）**不在基线包**：那是目的相关的采集（要 root 读别人的 `/proc`），
   # 在 `linux-datastore` / `linux-messaging`。在基线包里等于给每台 nginx 机都授权了数据库采集。
 ]
-catalog_version = 22
+catalog_version = 23
 status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-09-22T00:00:00Z"
@@ -119,7 +132,7 @@ families = ["ComputeWorkload"]
 unit_refs = [
   "linux-compute-workload",
 ]
-catalog_version = 22
+catalog_version = 23
 status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-09-22T00:00:00Z"
@@ -138,7 +151,7 @@ unit_refs = [
   "linux-mysql-metrics",
   "linux-doris-metrics",
 ]
-catalog_version = 22
+catalog_version = 23
 status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-09-22T00:00:00Z"
@@ -152,7 +165,7 @@ families = ["MessageQueueMetrics"]
 unit_refs = [
   "linux-kafka-metrics",
 ]
-catalog_version = 22
+catalog_version = 23
 status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-11-08T00:00:00Z"
@@ -166,7 +179,7 @@ unit_refs = [
   "linux-misc-system",
   "linux-network-service",
 ]
-catalog_version = 22
+catalog_version = 23
 status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-09-22T00:00:00Z"
@@ -182,7 +195,7 @@ families = ["TrafficInspection"]
 unit_refs = [
   "linux-suricata-eve",
 ]
-catalog_version = 22
+catalog_version = 23
 status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-10-30T00:00:00Z"

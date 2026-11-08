@@ -77,7 +77,7 @@
 # 采集就绪（能不能派下去把原文拿回来）与解析就绪（rule_ref）是**两个轴**，不互相卡：
 #   mac-reboot-power 就是“可采但解析未就绪”的样本（原文进得来，只会归在泛化的 agent.log 下）。
 
-catalog_version = 22
+catalog_version = 23
 origin = "Gateway"
 published_at = "2026-11-08T00:00:00Z"
 # 整包的最低 agentd（可选；与单元级取**高者**）。修改它等于全舰队的升级门槛，
@@ -164,7 +164,7 @@ summary_en = "Host metrics such as load, memory, disk, and uptime."
 # 平台先只开 linux：自探读 `/proc/<pid>`，macOS 没有。
 [[families]]
 id = "DatabaseMetrics"
-platforms = ["linux"]
+platforms = ["linux", "macos"]
 name_zh = "数据库指标"
 name_en = "Database metrics"
 summary_zh = "数据库运行指标（连接、事务、IO、复制、容量、tablet）。产品差异由单元与来源类型承载。"
@@ -1108,6 +1108,64 @@ platform = "linux"
 match = ""
 rule_ref = "agent_uplink"
 requires_privilege = "root"
+status = "active"
+
+[[units.sources]]
+kind = "DorisCluster"
+target = "auto"
+
+# ── macOS：同一条自探链，只换平台事实来源（libproc + KERN_PROCARGS2）──
+#
+# 与 Linux 的差别只有「闸门」：Linux 的指标单元在 `linux-datastore` 包里，包里就有机器语义；
+# macOS 的 `macos-dev` 是开发机大包，所以这几个单元必须自己门控 —— 否则每台开发机都会
+# 被派下去采一个并不存在的数据库。
+#
+# 闸门用 `container:<关键词>`（容器探针）+ `port:默认端口`（端点探针）+ Homebrew 数据目录：
+#   · `container:` 覆盖 **macOS 上最主流的现场：库跑在 Docker 的 Linux VM 里** ——
+#     宿主看不到它的进程，但是容器探针能从 Docker API 拿到容器名与发布端口；
+#   · 端口覆盖「装在非标准目录」的现场（进程名仍然能被发现）；
+#   · 路径覆盖「库装好了但没启动」的现场（装了就采，与 `mac-db-service` 同口径）。
+
+[[units]]
+unit_id = "mac-postgres-metrics"
+family = "DatabaseMetrics"
+capability = "collect_metrics"
+platform = "macos"
+match = "any:container:postgres|container:pg|port:5432|path_exists:/opt/homebrew/var/postgres|path_exists:/usr/local/var/postgres|path_exists:/opt/homebrew/var/postgresql@14|path_exists:/opt/homebrew/var/postgresql@15|path_exists:/opt/homebrew/var/postgresql@16|path_exists:/opt/homebrew/var/postgresql@17|path_exists:/opt/homebrew/var/postgresql@18|path_exists:/usr/local/var/postgresql@14|path_exists:/usr/local/var/postgresql@15|path_exists:/usr/local/var/postgresql@16|path_exists:/usr/local/var/postgresql@17|path_exists:/usr/local/var/postgresql@18"
+rule_ref = "agent_uplink"
+requires_privilege = "root"
+min_agentd_version = "0.30.0"
+status = "active"
+
+[[units.sources]]
+kind = "PostgresInstance"
+target = "auto"
+
+[[units]]
+unit_id = "mac-mysql-metrics"
+family = "DatabaseMetrics"
+capability = "collect_metrics"
+platform = "macos"
+match = "any:container:mysql|container:mariadb|container:tidb|port:3306|path_exists:/opt/homebrew/var/mysql|path_exists:/usr/local/var/mysql|path_exists:/opt/homebrew/etc/my.cnf|path_exists:/usr/local/etc/my.cnf"
+rule_ref = "agent_uplink"
+requires_privilege = "root"
+min_agentd_version = "0.30.0"
+status = "active"
+
+[[units.sources]]
+kind = "MysqlInstance"
+target = "auto"
+
+[[units]]
+unit_id = "mac-doris-metrics"
+family = "DatabaseMetrics"
+capability = "collect_metrics"
+platform = "macos"
+# Homebrew 没有 Doris 公式，装法不定：只靠端口（FE 的 MySQL 协议口）。
+match = "any:container:doris|port:9030"
+rule_ref = "agent_uplink"
+requires_privilege = "root"
+min_agentd_version = "0.30.0"
 status = "active"
 
 [[units.sources]]

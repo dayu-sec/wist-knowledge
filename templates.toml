@@ -59,8 +59,8 @@ machine_class = "LinuxData"
 platform = "linux"
 pack_refs = ["linux-base", "linux-workload", "linux-datastore", "linux-messaging", "linux-ops-extra", "linux-ids"]
 catalog_version = 23
-# 4：目录抬到 22（PG/MySQL/Doris 指标单元转 active；模板组成未变）
-template_version = 4
+# 5：目录抬到 23（macOS 数据库指标单元；模板组成未变）
+template_version = 5
 status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-09-22T00:00:00Z"

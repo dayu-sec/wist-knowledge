@@ -10,6 +10,10 @@
 #            MysqlInstance       MySQL / TiDB 指标（同上）
 #            PostgresInstance    PostgreSQL 指标（同上）
 #            DorisCluster        Doris 指标（同上）
+#            KeyProcessMetrics   **关键进程指标**：target 是匹配签名列表
+#                                （`unit:kafka|port:9092|exe:kafka`，`|` 是**或**语义）。
+#                                采哪些进程由 agentd 按本机事实判定（与自探域同一条纪律）。
+#                                前缀闭集：unit / exe / port / cmdline。
 #     multiline = none           一行一条（默认）
 #                 indented       行首缩进/制表符是上一条的续行（拟一整个多行记录上送）
 #                 container_cri  kubelet CRI 日志：按应用自己的头部（行首时间戳 / glog /
@@ -31,7 +35,7 @@
 #
 # 现状（macOS）：5 个面可采（active）—— mac-software-change、mac-reboot-power、
 #   mac-network-wifi、mac-launchd-service、mac-host-metrics。
-# 现状（Linux）：13 个面可采 —— 按面分：
+# 现状（Linux）：14 个面可采 —— 按面分：
 #   LoginSession / PrivilegeExecution / SoftwareChange（`auth.log`/`secure`、`sudo.log`、
 #   `audit.log` 整文件跟尾、`dpkg.log`/`apt`/`dnf`/`yum`）、
 #   ServiceLifecycle / CrashPanic / NetworkFirewall / RebootPower / KernelSystem / StorageHealth
@@ -40,6 +44,8 @@
 #   ComputeWorkload（容器 stdout：`/var/log/containers/*.log`；13 business / 15 gateway /
 #   16 k8s_pod 是**同一批流**的三种归类，采集侧只采一次，归类由数据面按正文分派）、
 #   DatabaseService（Postgres csvlog / MySQL slow log；记录边界见 W4）、
+#   ProcessMetrics（**关键进程指标**：按策展签名选代表进程，见文件末尾的 `linux-keyproc-*`；
+#   与「全部进程指标」是两件事 —— 后者基数不可接受）、
 #   TrafficInspection（Suricata `eve.json` 显式单路径跟尾，一行一条 JSON；
 #   固定落点 `/opt/suricata/logs/eve.json`，镜像部署与容量口径见
 #   `wist-agentd/docs/design/suricata-eve-collection.md`）。
@@ -77,7 +83,7 @@
 # 采集就绪（能不能派下去把原文拿回来）与解析就绪（rule_ref）是**两个轴**，不互相卡：
 #   mac-reboot-power 就是“可采但解析未就绪”的样本（原文进得来，只会归在泛化的 agent.log 下）。
 
-catalog_version = 23
+catalog_version = 24
 origin = "Gateway"
 published_at = "2026-11-08T00:00:00Z"
 # 整包的最低 agentd（可选；与单元级取**高者**）。修改它等于全舰队的升级门槛，
@@ -177,6 +183,17 @@ name_zh = "消息队列指标"
 name_en = "Message queue metrics"
 summary_zh = "分布式消息队列指标（broker 拓扑与容量、消费组积压与状态）。"
 summary_en = "Distributed message queue metrics (broker topology and capacity, consumer lag and state)."
+
+# 关键进程指标：按**签名**选出的进程，每个归属组取一个代表（PID 最小）。
+# 与「全部进程指标」是两件事：后者基数不可接受（台机器上千个进程），
+# 而关键进程的数量是服务个数。选哪些进程由 agentd 本机判定（`KeyProcessMetrics` 来源）。
+[[families]]
+id = "ProcessMetrics"
+platforms = ["linux"]
+name_zh = "关键进程指标"
+name_en = "Key process metrics"
+summary_zh = "按策展签名选出的关键进程运行指标（每个服务一个代表进程）。"
+summary_en = "Runtime metrics of key processes selected by curated signatures (one representative per service)."
 
 [[families]]
 id = "PrivacyTcc"
@@ -1171,3 +1188,94 @@ status = "active"
 [[units.sources]]
 kind = "DorisCluster"
 target = "auto"
+
+# ── 关键进程指标（linux）：target 是**签名列表**，agentd 按本机事实匹配 ──
+#
+# 为什么这样写：
+#   · `unit:` 认 systemd 单元（部署者命名的，置信度最高）、`port:` 认端口持有者、
+#     `exe:` 认可执行名 —— 三条是**或**语义，覆盖「服务化 / 裸跑 / 容器化」三种形态；
+#     例如 kafka 在多数发行版里 exe 是 `java`，只能靠 `unit:` 或 `port:` 认出；
+#   · `requires_privilege = "root"`：带 `port:` 要读**别的用户**的 fd / netns
+#     （`cmdline:` 与 `exe:` 本身不需要提权）；
+#   · `min_agentd_version = "0.36.0"`：`KeyProcessMetrics` 从这一版才有；
+#   · `match` **只写被我实测过/有探针的条件**：`installed:` 目前探针未实现（恒为“无法判定”），
+#     写它等于永不展开 —— 所以这里只用 `path_exists:` 与 `port:`。
+
+[[units]]
+unit_id = "linux-keyproc-kafka"
+family = "ProcessMetrics"
+capability = "collect_metrics"
+platform = "linux"
+match = "any:path_exists:/etc/kafka|path_exists:/opt/kafka|path_exists:/var/lib/kafka|port:9092"
+rule_ref = "agent_uplink"
+requires_privilege = "root"
+min_agentd_version = "0.36.0"
+status = "active"
+
+[[units.sources]]
+kind = "MetricInterval"
+target = "15s"
+
+[[units.sources]]
+kind = "KeyProcessMetrics"
+target = "unit:kafka|port:9092|exe:kafka"
+
+[[units]]
+unit_id = "linux-keyproc-nginx"
+family = "ProcessMetrics"
+capability = "collect_metrics"
+platform = "linux"
+match = "any:path_exists:/etc/nginx|port:80|port:443"
+rule_ref = "agent_uplink"
+requires_privilege = "root"
+min_agentd_version = "0.36.0"
+status = "active"
+
+[[units.sources]]
+kind = "MetricInterval"
+target = "15s"
+
+# 签名里**不写 `port:80|443`**：`match` 用它决定“这个面要不要出现”（可见性），
+# 但签名用它选进程会把**占着 80 的别的服务**（apache / caddy / traefik）当成 nginx，
+# 采集面就报错了名。`unit:` 盖 systemd/容器，`exe:` 盖裸跑，两条已足够。
+[[units.sources]]
+kind = "KeyProcessMetrics"
+target = "unit:nginx|exe:nginx"
+
+[[units]]
+unit_id = "linux-keyproc-redis"
+family = "ProcessMetrics"
+capability = "collect_metrics"
+platform = "linux"
+match = "any:path_exists:/etc/redis|port:6379"
+rule_ref = "agent_uplink"
+requires_privilege = "root"
+min_agentd_version = "0.36.0"
+status = "active"
+
+[[units.sources]]
+kind = "MetricInterval"
+target = "15s"
+
+[[units.sources]]
+kind = "KeyProcessMetrics"
+target = "unit:redis|port:6379|exe:redis-server"
+
+[[units]]
+unit_id = "linux-keyproc-postgres"
+family = "ProcessMetrics"
+capability = "collect_metrics"
+platform = "linux"
+match = "any:path_exists:/etc/postgresql|port:5432"
+rule_ref = "agent_uplink"
+requires_privilege = "root"
+min_agentd_version = "0.36.0"
+status = "active"
+
+[[units.sources]]
+kind = "MetricInterval"
+target = "15s"
+
+[[units.sources]]
+kind = "KeyProcessMetrics"
+target = "unit:postgresql|port:5432|exe:postgres"

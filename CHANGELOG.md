@@ -5,6 +5,38 @@
 
 > 说明：自 0.1.5 起维护本文件。
 
+## [0.11.0-alpha] - 2026-11-21
+
+### 升级顺序
+
+- **先升 gateway 到 ≥ 0.49.0、agentd 到 ≥ 0.36.0**，再录入/激活本包。
+  gateway 0.48 不认识新的采集面与来源类型，会以 `package_content_invalid` 拒收整包；
+  agentd 0.35 不认识 `KeyProcessMetrics`，单元会被 `min_agentd_version` 裁掉（不报错，但采不到）。
+
+### 新增（关键进程指标）
+
+- 新采集面 **`ProcessMetrics`**（平台 linux）：采**关键进程**的运行指标（rss / cpu / state），
+  每个服务只取一个代表进程。与「全部进程指标」是两件事 —— 后者基数不可接受（一台机器上千进程）。
+- 4 个单元 `linux-keyproc-{kafka,nginx,redis,postgres}`，每个两条来源：
+  `MetricInterval/15s`（周期）+ `KeyProcessMetrics/<签名列表>`（选哪些进程）。
+  签名是**或**语义：`unit:`（systemd 单元名子串）、`exe:`（可执行名 basename）、
+  `port:`（该进程持有的监听端口）。选哪些进程仍由 agentd 按本机事实判定，知识库只描述“它长什么样”。
+  - nginx 的签名**故意不含 `port:80|443`**：那会把 apache / caddy / traefik 当成 nginx。
+  - 单元 `match` 只用**有探针的**条件（`path_exists:` / `port:`），没装这些服务的机器不会多出一个采不到的选项。
+  - 4 个单元都声明 `requires_privilege = "root"`（`port:` 要读别的用户的 fd / netns）
+    与 `min_agentd_version = "0.36.0"`。
+- 新包 `linux-process-metrics`，挂到 `linux-compute` 与 `linux-data` 模板。
+
+### 变更
+
+- `catalog_version` 23 → 24（`packs.toml` / `templates.toml` 同步）。
+- `template_version`：`linux-compute` 1 → 2、`linux-data` 5 → 6（组成变了）。
+
+### 兼容性
+
+- `compat.json`：`requires.wist-gateway` 抬到 `>=0.49.0`；`supports.wist-agentd` 不变
+  （旧 agentd 只会少掉这几个面，不影响其他单元）。
+
 ## [0.10.0-alpha] - 2026-11-09
 
 ### 升级顺序

@@ -23,7 +23,7 @@ template_id = "macos-daily"
 machine_class = "MacDaily"
 platform = "macos"
 pack_refs = ["macos-base"]
-catalog_version = 24
+catalog_version = 25
 template_version = 1
 status = "draft"
 curated_by = "platform-maintenance"
@@ -35,7 +35,7 @@ template_id = "macos-dev"
 machine_class = "MacDev"
 platform = "macos"
 pack_refs = ["macos-base", "macos-dev"]
-catalog_version = 24
+catalog_version = 25
 template_version = 1
 status = "draft"
 curated_by = "platform-maintenance"
@@ -46,7 +46,7 @@ template_id = "linux-compute"
 machine_class = "LinuxCompute"
 platform = "linux"
 pack_refs = ["linux-base", "linux-workload", "linux-process-metrics", "linux-ids"]
-catalog_version = 24
+catalog_version = 25
 template_version = 2
 status = "draft"
 curated_by = "platform-maintenance"
@@ -58,9 +58,9 @@ template_id = "linux-data"
 machine_class = "LinuxData"
 platform = "linux"
 pack_refs = ["linux-base", "linux-workload", "linux-datastore", "linux-messaging", "linux-process-metrics", "linux-ops-extra", "linux-ids"]
-catalog_version = 24
-# 6：加入 `linux-process-metrics` 包（关键进程指标）
-template_version = 6
+catalog_version = 25
+# 7：目录抬到 25（`linux-host` 挂上关键进程包；本模板组成未变，抬它只为满足模板版本的单调性）
+template_version = 7
 status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-09-22T00:00:00Z"
@@ -72,9 +72,12 @@ curated_at = "2026-09-22T00:00:00Z"
 template_id = "linux-host"
 machine_class = "LinuxHost"
 platform = "linux"
-pack_refs = ["linux-base", "linux-ids"]
-catalog_version = 24
-template_version = 1
+# `linux-process-metrics` 在**基线主机**上也挂：关键进程是「主机普遍能力」（与容器 stdout 同理），
+# 不绑在「这台机器算什么用途」上；没装那些服务的机器由单元的 `match` 自己挡掉。
+pack_refs = ["linux-base", "linux-process-metrics", "linux-ids"]
+catalog_version = 25
+# 2：挂上 `linux-process-metrics`（关键进程指标）
+template_version = 2
 status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-09-22T00:00:00Z"

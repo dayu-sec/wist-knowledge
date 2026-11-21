@@ -5,6 +5,26 @@
 
 > 说明：自 0.1.5 起维护本文件。
 
+## [0.12.0-alpha] - 2026-11-21
+
+### 升级顺序
+
+- 先升 gateway ≥ 0.49.0、agentd ≥ 0.36.0（关键进程面的前置，跟 0.11 一致），再录入/激活本包。
+
+### 变更
+
+- **`linux-host` 模板挂上 `linux-process-metrics`**：基线主机也能授权关键进程指标。
+  理由：关键进程是「主机普遍能力」（与容器 stdout 同理），不应绑在「这台机器算什么用途」上；
+  没装 kafka / nginx / redis / postgres 的机器由单元自己的 `match` 挡掉，不会多出一个采不到的选项。
+  此前只有 `linux-compute` / `linux-data` 带这个包，结果是「授权了模板的主机一台都不采」。
+- `catalog_version` 24 → 25（`packs.toml` / `templates.toml` 同步）。
+- `template_version`：`linux-host` 1 → 2（组成变了）；`linux-data` 6 → 7
+  （本模板组成未变，抬它只为满足 CI 的模板版本单调性：比对取所有模板的最大值）。
+
+### 未变
+
+- 4 个 `linux-keyproc-*` 单元、`ProcessMetrics` 面、采集签名与 `min_agentd_version = "0.36.0"` 均未改。
+
 ## [0.11.0-alpha] - 2026-11-21
 
 ### 升级顺序

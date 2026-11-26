@@ -83,7 +83,7 @@
 # 采集就绪（能不能派下去把原文拿回来）与解析就绪（rule_ref）是**两个轴**，不互相卡：
 #   mac-reboot-power 就是“可采但解析未就绪”的样本（原文进得来，只会归在泛化的 agent.log 下）。
 
-catalog_version = 25
+catalog_version = 26
 origin = "Gateway"
 published_at = "2026-11-08T00:00:00Z"
 # 整包的最低 agentd（可选；与单元级取**高者**）。修改它等于全舰队的升级门槛，
@@ -290,6 +290,20 @@ name_zh = "流量检测"
 name_en = "Traffic inspection"
 summary_zh = "镜像流量的入侵检测事件（Suricata eve.json）。"
 summary_en = "Intrusion-detection events from mirrored traffic (Suricata eve.json)."
+
+# 主机流记录：五个网络面各回答一个问题 —— NetworkFirewall「被拦了什么、策略变没变」、
+# NetworkService「服务自己报了什么」、TrafficInspection「IDS 报了哪些告警」、
+# NetworkFlow「和谁、哪个端口、多大量」的**通信事实**（五元组窗口聚合）。
+# 载体是主机侧 tc + eBPF，**不是**云侧 VPC 流日志的等价替代：观测点在网卡，
+# 看不到到达网卡前就被云侧策略丢掉的流量；两个来源不得相加。
+# 详见 `wist-agentd/docs/design/host-ebpf-flow-collection.md`。
+[[families]]
+id = "NetworkFlow"
+platforms = ["linux"]
+name_zh = "网络流记录"
+name_en = "Network flows"
+summary_zh = "主机对外网卡的 TCP/UDP/ICMP 通信记录（五元组窗口聚合）。"
+summary_en = "Host-observed TCP/UDP/ICMP communication records (windowed 5-tuple aggregates)."
 
 # ── macOS ─────────────────────────────────────────────────────────
 
@@ -1045,6 +1059,28 @@ kind = "FileGlob"
 target = "/opt/suricata/logs/eve.json"
 # 一行一条 JSON：默认读法就是它，写出来是为了让「不解析正文」在目录里可见。
 multiline = "none"
+
+# 主机流记录（eBPF）：观测哪张网卡由 agentd 自己判定 —— `target = auto`，
+# 因为网卡是**本机事实**，平台指定不出来（与自探域同一条纪律）。
+# 前置条件不是文件而是**能力**（内核基线 / CAP / qdisc）：不满足时 agentd 报
+# `blocked + unsupported|permission`，所以这里不用 `match` 去猜。
+# `rule_ref` 先留空：`FLOW:` 帧的数据面规则尚未落地（原文照进，归类/抽字段待数据面）；
+# 规则落地后改为 `agent_uplink`。
+[[units]]
+unit_id = "linux-host-flow"
+family = "NetworkFlow"
+capability = "collect_logs"
+platform = "linux"
+match = ""
+rule_ref = ""
+requires_privilege = "root"
+# 采集未就绪：能力要先在 agentd 落地（source kind `HostFlow`），且机队里仍有不认识它的
+# agent。能力上线并完成机队验证后再翻 `active`，并**单独抬一次** knowledge 版本。
+status = "draft"
+
+[[units.sources]]
+kind = "HostFlow"
+target = "auto"
 
 [[units]]
 unit_id = "linux-host-metrics"

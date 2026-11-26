@@ -5,6 +5,28 @@
 
 > 说明：自 0.1.5 起维护本文件。
 
+## [0.13.0-alpha] - 2026-11-26
+
+### 升级顺序
+
+- 本包只新增一个 **draft 面 + draft 单元 + draft 包**，不改任何既有单元：旧网关 / 旧
+  agentd 装载后派单结果不变，可以先升包。
+- 本包**不要求**升 `wist-agentd`。单元是 `draft`，不会被派；`HostFlow` 来源要等
+  `wist-contracts` 与 agentd 侧能力落地后才生效（那一步再单独抬一次版本并翻 `active`）。
+
+### 变更
+
+- 新增采集面 `NetworkFlow`（网络流记录）：主机对外网卡的 TCP/UDP/ICMP 五元组窗口聚合。
+  与四个既有网络面各自回答的问题不同 —— `NetworkFirewall`「被拦了什么、策略变没变」、
+  `NetworkService`「服务自己报了什么」、`TrafficInspection`「IDS 报了哪些告警」，
+  而 `NetworkFlow` 是「和谁、哪个端口、多大量」的**通信事实**。
+- 新增单元 `linux-host-flow`（`source kind = HostFlow`、`target = auto`、`status = draft`）：
+  观测哪张网卡由 agentd 按**本机事实**判定；平台不指定接口名（与自探域同一条纪律）。
+  前置条件是能力而不是文件（内核基线 / CAP / qdisc），所以不用 `match` 猜。
+- 新增特性包 `linux-flow`（`Feature`，**不挂任何模板**）：聚合表内存与 per-packet CPU
+  不适合每台机默认开，按机器单独授权。
+- `catalog_version` 25 → 26（`packs.toml` / `templates.toml` 同步）。
+
 ## [0.12.0-alpha] - 2026-11-21
 
 ### 升级顺序

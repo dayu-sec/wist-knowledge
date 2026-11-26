@@ -23,9 +23,13 @@
 - 新增单元 `linux-host-flow`（`source kind = HostFlow`、`target = auto`、`status = draft`）：
   观测哪张网卡由 agentd 按**本机事实**判定；平台不指定接口名（与自探域同一条纪律）。
   前置条件是能力而不是文件（内核基线 / CAP / qdisc），所以不用 `match` 猜。
-- 新增特性包 `linux-flow`（`Feature`，**不挂任何模板**）：聚合表内存与 per-packet CPU
-  不适合每台机默认开，按机器单独授权。
-- `catalog_version` 25 → 26（`packs.toml` / `templates.toml` 同步）。
+- 新增特性包 `linux-flow`（`Feature`）：聚合表内存与 per-packet CPU 不适合每台机默认开，
+  实际是否展开仍由 agentd 能力决定。
+- 三个 Linux 模板挂上 `linux-flow`（`linux-compute` / `linux-data` / `linux-host`），与 `linux-ids`
+  同构：包与单元都是 draft，展开只取 active 单元，**现在不会多出一面**；先挂是为了
+  能力就绪、翻 `active` 时不必再改一轮模板版本。
+- `catalog_version` 25 → 26（`packs.toml` / `templates.toml` 同步）；
+  `template_version`：`linux-compute` 2→3、`linux-data` 7→8、`linux-host` 2→3（组成变了）。
 
 ## [0.12.0-alpha] - 2026-11-21
 

@@ -45,9 +45,10 @@ curated_at = "2026-09-22T00:00:00Z"
 template_id = "linux-compute"
 machine_class = "LinuxCompute"
 platform = "linux"
-pack_refs = ["linux-base", "linux-workload", "linux-process-metrics", "linux-ids"]
+pack_refs = ["linux-base", "linux-workload", "linux-process-metrics", "linux-ids", "linux-flow"]
 catalog_version = 26
-template_version = 2
+# 3：挂上 `linux-flow`（主机流记录；包与单元都是 draft，能力就绪后才展开）
+template_version = 3
 status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-09-22T00:00:00Z"
@@ -57,10 +58,10 @@ curated_at = "2026-09-22T00:00:00Z"
 template_id = "linux-data"
 machine_class = "LinuxData"
 platform = "linux"
-pack_refs = ["linux-base", "linux-workload", "linux-datastore", "linux-messaging", "linux-process-metrics", "linux-ops-extra", "linux-ids"]
+pack_refs = ["linux-base", "linux-workload", "linux-datastore", "linux-messaging", "linux-process-metrics", "linux-ops-extra", "linux-ids", "linux-flow"]
 catalog_version = 26
-# 7：目录抬到 25（`linux-host` 挂上关键进程包；本模板组成未变，抬它只为满足模板版本的单调性）
-template_version = 7
+# 8：挂上 `linux-flow`（主机流记录；包与单元都是 draft，能力就绪后才展开）
+template_version = 8
 status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-09-22T00:00:00Z"
@@ -74,10 +75,12 @@ machine_class = "LinuxHost"
 platform = "linux"
 # `linux-process-metrics` 在**基线主机**上也挂：关键进程是「主机普遍能力」（与容器 stdout 同理），
 # 不绑在「这台机器算什么用途」上；没装那些服务的机器由单元的 `match` 自己挡掉。
-pack_refs = ["linux-base", "linux-process-metrics", "linux-ids"]
+pack_refs = ["linux-base", "linux-process-metrics", "linux-ids", "linux-flow"]
 catalog_version = 26
-# 2：挂上 `linux-process-metrics`（关键进程指标）
-template_version = 2
+# 3：挂上 `linux-flow`（主机流记录）。
+# 为什么 draft 包也挂：展开只取 active 单元，所以现在不会多出一项；现在挂是为了
+# 「能力就绪 → 翻 active」时不必再改一轮模板版本。与 `linux-ids` 同构。
+template_version = 3
 status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-09-22T00:00:00Z"

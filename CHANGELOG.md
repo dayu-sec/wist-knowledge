@@ -11,6 +11,8 @@
 
 ### 变更
 
+- `catalog_version` 28 → 29（`catalog.toml` / `packs.toml` / `templates.toml` 同步）——
+  注释变了也算内容变更，改内容就必须抬版本，否则回滚会回错东西。
 - `linux-host-flow` 的注释：`agent_uplink_flow_frame` → **`agent_uplink_flow`**
   （数据面模型 1.3.0 起，与 `agent_uplink_obs_fact` / `agent_uplink_ivsrep` 一致）。
   `rule_ref` 仍是 `agent_uplink`（包级），派单与解析口径都不变。

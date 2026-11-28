@@ -1,6 +1,6 @@
 {
   "component": "wist-knowledge",
-  "version": "0.15.0",
+  "version": "0.15.1",
   "requires": {
     "wist-gateway": ">=0.60.0"
   },

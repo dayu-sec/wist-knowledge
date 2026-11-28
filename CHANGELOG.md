@@ -5,6 +5,21 @@
 
 > 说明：自 0.1.5 起维护本文件。
 
+## [0.15.1-alpha] - 2026-11-28
+
+> 只改注释：数据面规则/OML 改名后，`catalog.toml` 里对它的两处引用跟着改。
+
+### 变更
+
+- `linux-host-flow` 的注释：`agent_uplink_flow_frame` → **`agent_uplink_flow`**
+  （数据面模型 1.3.0 起，与 `agent_uplink_obs_fact` / `agent_uplink_ivsrep` 一致）。
+  `rule_ref` 仍是 `agent_uplink`（包级），派单与解析口径都不变。
+
+### 升级顺序
+
+- 与 0.15.0 相同（网关 ≥ 0.60.0 → agentd ≥ 0.46.0 → 录入/激活）。本版可与数据面模型 1.3.0
+  一起升，也可以单独升（不影响任何单元的状态）。
+
 ## [0.15.0-alpha] - 2026-11-28
 
 > 本版只做一件事：把 `NetworkFlow`（网络流记录）从 `draft` 翻 `active`——现在可以在

@@ -5,6 +5,40 @@
 
 > 说明：自 0.1.5 起维护本文件。
 
+## [0.14.0-alpha] - 2026-11-28
+
+> 本版**首次包含**主机流记录面 `NetworkFlow`（原 0.13.0 内容，那一版未发布）。
+> `catalog_version` 26 → 27，`template_version` linux-compute 3→4 / linux-data 8→9 / linux-host 3→4。
+
+### 升级顺序
+
+- **先升网关（认 `ContainerMetrics` 来源与 `ContainerMetrics` 面），再升 agentd
+  （≥ 0.45.0），最后录入/激活本包**。旧网关遇到未知来源 kind 会把整个单元判成不可采，
+  旧 agent 会在预检里得到 `agent_too_old`（单元带了 `min_agentd_version`）—— 都不会坏事，
+  但会让容器指标面暂时不出现。
+
+### 变更
+
+- 新增采集面 `ContainerMetrics`（容器指标）：**每个容器**一条序列（内存 / CPU / 状态）。
+  与 `HostMetrics` 的粒度不同（整机 vs 每容器，与 `ProcessMetrics` 拆出去同构），
+  与 `ContainerWorkload`（容器 stdout 日志）是两类内容。
+- 新增单元 `linux-container-metrics`（`MetricInterval 15s` + `ContainerMetrics auto`）：
+  `match` 判的是「这台机器有没有容器运行时」（`path_exists:` 顶层目录），不是「采不采得到」；
+  有运行时但 agent 读不到时，由 agentd 采集记账如实报
+  「容器运行时看不见」+ 原因（`event=ContainerScanUnreadable`）。
+- 新增特性包 `linux-container-metrics`（`Feature`），挂到 `linux-compute` / `linux-data` /
+  `linux-host` —— 容器指标是「主机普遍能力」，不绑机器用途；没容器的机器由单元 `match` 挡掉。
+- `catalog_version` 26 → 27（`packs.toml` / `templates.toml` 同步）；
+  `template_version`：`linux-compute` 3→4、`linux-data` 8→9、`linux-host` 3→4（组成变了）。
+- 新增 `exporters.toml`（`exporters_version = 1`）：导出器二进制的**搜索目录**（按平台）与
+  可选周期/超时覆盖。它只影响“去哪找同名可执行文件、多久跑一次”，**不改跑什么**
+  （二进制名与参数在 agentd 代码里登记）。网关装载时校验（ID 属契约闭集、目录属系统目录白名单、
+  周期/超时在界内），经 `POST /api/v1/agent/exporter-policy:poll` 下发；
+  **旧包没这份文件也照常装载**（agentd 回落内置表）。
+- `scripts/check_content_versions.py` 新增一条门禁：manifest 里出现**没登记版本键**的文件时
+  直接判失败。没登记等于给这个文件留了“改了不升版本”的免检通道 —— 比单调性本身更该先挡住
+  （本次 `exporters.toml` 就是靠这条规则才不会漏登记）。只查本版，不让历史缺口回溯失败。
+
 ## [0.13.0-alpha] - 2026-11-26
 
 ### 升级顺序

@@ -1,8 +1,8 @@
 {
   "component": "wist-knowledge",
-  "version": "0.13.0",
+  "version": "0.14.0",
   "requires": {
-    "wist-gateway": ">=0.49.0"
+    "wist-gateway": ">=0.59.0"
   },
   "supports": {
     "wist-agentd": ">=0.25.0"

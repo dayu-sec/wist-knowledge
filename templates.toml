@@ -60,8 +60,9 @@ machine_class = "LinuxData"
 platform = "linux"
 pack_refs = ["linux-base", "linux-workload", "linux-datastore", "linux-messaging", "linux-process-metrics", "linux-container-metrics", "linux-ops-extra", "linux-ids", "linux-flow"]
 catalog_version = 29
-# 10：`linux-flow` 翻 active（展开面集多了 NetworkFlow）
-template_version = 10
+# 11：只抬 `catalog_version` 引用（0.15.1 的注释改名）；组成未变，
+# 门禁按最大值比模板版本，抬这一份即可（与 0.12.0 同一条先例）。
+template_version = 11
 status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-09-22T00:00:00Z"

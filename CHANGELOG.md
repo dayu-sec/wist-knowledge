@@ -5,6 +5,40 @@
 
 > 说明：自 0.1.5 起维护本文件。
 
+## [0.15.0-alpha] - 2026-11-28
+
+> 本版只做一件事：把 `NetworkFlow`（网络流记录）从 `draft` 翻 `active`——现在可以在
+> 「常驻工作」页上逐面授权它了。
+
+### 升级顺序
+
+- **网关 ≥ 0.60.0**（依赖 `wist-contracts 0.16`，能认 `HostFlow` 这个 source kind）
+  → **agentd ≥ 0.46.0**（采集器默认只留「一端是公网」的流量）→ 最后录入/激活本包。
+  顺序反了也不会坏事：旧 agent 会把这一面报成 `unsupported`，只是暂时不出现。
+
+### 变更
+
+- `linux-host-flow`：`status = "draft"` → `"active"`。
+  能力已就绪：`wist-agentd` 0.46.0 起采集器可用；数据面规则 `agent_uplink_flow_frame`
+  （WPL + OML + `agent-flows` sink）已落地并有用例（`dev/tests/agent-uplink-flow.test.sh`）。
+- `linux-host-flow`：`rule_ref = ""` → `"agent_uplink"`。
+  以前是空值（原文照进、显示「原文未归类」）；现在帧能被归类到 `agent_uplink_flow_frame`。
+  **正文仍不拆字段**（形状只在 `wist-contracts::host_flow` 定义一份，数据面只搬不建模）。
+- `linux-flow`（特性包）：`status = "draft"` → `"active"`。
+  包早就挂在 `linux-compute` / `linux-data` / `linux-host` 上，翻 active 后这三个模板的
+  展开面集才多出 `NetworkFlow`。
+- `catalog_version` 27 → 28（`packs.toml` / `templates.toml` 同步）；
+  `template_version`：`linux-compute` 4→5、`linux-data` 9→10、`linux-host` 4→5。
+
+### 口径提醒（写给授权的人）
+
+- 授权是**逐面**的：卡片出现后还要点「授权这份工作」才会下发 `HostFlow:auto`。
+- 采集口径默认**只留一端是公网的流量**（入站与出站都算）；内网东西向在聚合前就丢弃。
+  只跑东西向的机器会持续零记录，那是 `success`，不是故障
+  （`agentd diagnose` 的 `flows.status` 会打 `sent=0 但 filtered>0`）。
+- 能力不满足（内核 < 5.4 / 缺 CAP / qdisc 装不上）时 agentd 报 `blocked`，不会静默。
+- 本面对数据面的落盘目前是 `agent-flows.jsonl`（文件 sink）；经网关入库/进平台库尚未接。
+
 ## [0.14.0-alpha] - 2026-11-28
 
 > 本版**首次包含**主机流记录面 `NetworkFlow`（原 0.13.0 内容，那一版未发布）。

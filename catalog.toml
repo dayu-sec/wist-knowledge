@@ -1077,19 +1077,19 @@ multiline = "none"
 # 因为网卡是**本机事实**，平台指定不出来（与自探域同一条纪律）。
 # 前置条件不是文件而是**能力**（内核基线 / CAP / qdisc）：不满足时 agentd 报
 # `blocked + unsupported|permission`，所以这里不用 `match` 去猜。
-# `rule_ref` 先留空：`FLOW:` 帧的数据面规则尚未落地（原文照进，归类/抽字段待数据面）；
-# 规则落地后改为 `agent_uplink`。
+# `rule_ref = "agent_uplink"`：`FLOW:` 帧的数据面规则（`agent_uplink_flow_frame`）已于
+# 0.15.0 落地（WPL + OML + `agent-flows` sink），正文仍不拆字段。
 [[units]]
 unit_id = "linux-host-flow"
 family = "NetworkFlow"
 capability = "collect_logs"
 platform = "linux"
 match = ""
-rule_ref = ""
+rule_ref = "agent_uplink"
 requires_privilege = "root"
-# 采集未就绪：能力要先在 agentd 落地（source kind `HostFlow`），且机队里仍有不认识它的
-# agent。能力上线并完成机队验证后再翻 `active`，并**单独抬一次** knowledge 版本。
-status = "draft"
+# 采集就绪（0.15.0）：agentd 0.46.0 起采集器可用，默认只留「一端是公网」的流量
+# （对内网东西向在聚合前丢弃）；数据面规则 `agent_uplink_flow_frame` 已落地并有用例。
+status = "active"
 
 [[units.sources]]
 kind = "HostFlow"

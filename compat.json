@@ -1,11 +1,11 @@
 {
   "component": "wist-knowledge",
-  "version": "0.14.0",
+  "version": "0.15.0",
   "requires": {
-    "wist-gateway": ">=0.59.0"
+    "wist-gateway": ">=0.60.0"
   },
   "supports": {
-    "wist-agentd": ">=0.25.0"
+    "wist-agentd": ">=0.46.0"
   },
   "coexists_with": {},
   "compat_mode": false,

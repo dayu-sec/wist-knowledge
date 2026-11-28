@@ -83,7 +83,7 @@
 # 采集就绪（能不能派下去把原文拿回来）与解析就绪（rule_ref）是**两个轴**，不互相卡：
 #   mac-reboot-power 就是“可采但解析未就绪”的样本（原文进得来，只会归在泛化的 agent.log 下）。
 
-catalog_version = 26
+catalog_version = 27
 origin = "Gateway"
 published_at = "2026-11-08T00:00:00Z"
 # 整包的最低 agentd（可选；与单元级取**高者**）。修改它等于全舰队的升级门槛，
@@ -194,6 +194,19 @@ name_zh = "关键进程指标"
 name_en = "Key process metrics"
 summary_zh = "按策展签名选出的关键进程运行指标（每个服务一个代表进程）。"
 summary_en = "Runtime metrics of key processes selected by curated signatures (one representative per service)."
+
+# 容器运行指标：**每个容器**一条序列（内存 / CPU / 状态）。
+#
+# 与 `HostMetrics`（整机）粒度不同：后者回答「这台机器累不累」，这里回答「哪个容器在吃资源」。
+# 与 `ContainerWorkload`（容器 **stdout 日志**）是两类内容，不能合面。
+# 采哪些容器是本机发现的事实（`ContainerMetrics` 来源的 `target` 只认 `auto`）。
+[[families]]
+id = "ContainerMetrics"
+platforms = ["linux"]
+name_zh = "容器指标"
+name_en = "Container metrics"
+summary_zh = "按容器维度的运行指标（内存 / CPU / 状态），目标来自本机容器发现。"
+summary_en = "Per-container runtime metrics (memory, CPU, state); targets come from local container discovery."
 
 [[families]]
 id = "PrivacyTcc"
@@ -1315,3 +1328,38 @@ target = "15s"
 [[units.sources]]
 kind = "KeyProcessMetrics"
 target = "unit:postgresql|port:5432|exe:postgres"
+
+# ── 容器运行指标（linux）───────────────────────────────────────────
+#
+# 与「关键进程指标」拆开：同一台机器上它们观测的对象不同（整机进程 vs 每个容器），
+# 且容器指标的目标**只能来自本机发现**（运行时根目录 / Docker socket）。
+#
+# `match` 判的是「这台机器有没有容器运行时」，不是「采不采得到」：
+#   · 没有运行时 → 面不适用（`No`），这台机器上不出现这一面；
+#   · 有运行时但 agent 读不到（非 root 读 `/run/containerd` 的 0700）→ 单元照常展开，
+#     agentd 的采集记账如实报「容器运行时看不见」+ 原因（`event=ContainerScanUnreadable`）。
+#   两件事不能混：前者什么都不用修，后者要人给权限。
+#
+# 为什么判顶层目录而不是运行时根目录：`path_exists` 只回答「装没装」；
+# 「读不读得了」要真去读才知道，那是采集层的事。
+[[units]]
+unit_id = "linux-container-metrics"
+family = "ContainerMetrics"
+capability = "collect_metrics"
+platform = "linux"
+match = "path_exists:/run/containerd|/var/run/containerd|/run/docker|/var/run/docker"
+rule_ref = "agent_uplink"
+# 读运行时根目录要 root（0700）；非 root 的 agent 会报「看不见」而不是假称没容器。
+requires_privilege = "root"
+# `ContainerMetrics` 来源从这一版 agentd 才有；旧 agent 会在预检里直接得到 `agent_too_old`，
+# 比派下去报 unsupported 更好定位。
+min_agentd_version = "0.45.0"
+status = "active"
+
+[[units.sources]]
+kind = "MetricInterval"
+target = "15s"
+
+[[units.sources]]
+kind = "ContainerMetrics"
+target = "auto"

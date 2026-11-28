@@ -35,8 +35,8 @@ VERSION=""
 DRY_RUN=0
 ALLOW_DRAFT=0
 
-# 包内容 = 五份策展数据（**白名单**，不是 `*`：目录里以后多出别的东西不该被顺手打进制品）。
-KNOWLEDGE_FILES=(catalog.toml packs.toml templates.toml purpose-rules.toml aspect-policies.toml)
+# 包内容 = 六份策展数据（**白名单**，不是 `*`：目录里以后多出别的东西不该被顺手打进制品）。
+KNOWLEDGE_FILES=(catalog.toml packs.toml templates.toml purpose-rules.toml aspect-policies.toml exporters.toml)
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -185,6 +185,9 @@ if policy_version is not None:
 purpose_version = top_level(read("purpose-rules.toml"), "purpose_version")
 if purpose_version is not None:
     content_versions["purpose_version"] = purpose_version
+exporters_version = top_level(read("exporters.toml"), "exporters_version")
+if exporters_version is not None:
+    content_versions["exporters_version"] = exporters_version
 
 try:
     commit = subprocess.run(

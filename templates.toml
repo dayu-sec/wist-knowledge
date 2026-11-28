@@ -23,7 +23,7 @@ template_id = "macos-daily"
 machine_class = "MacDaily"
 platform = "macos"
 pack_refs = ["macos-base"]
-catalog_version = 26
+catalog_version = 27
 template_version = 1
 status = "draft"
 curated_by = "platform-maintenance"
@@ -35,7 +35,7 @@ template_id = "macos-dev"
 machine_class = "MacDev"
 platform = "macos"
 pack_refs = ["macos-base", "macos-dev"]
-catalog_version = 26
+catalog_version = 27
 template_version = 1
 status = "draft"
 curated_by = "platform-maintenance"
@@ -45,10 +45,10 @@ curated_at = "2026-09-22T00:00:00Z"
 template_id = "linux-compute"
 machine_class = "LinuxCompute"
 platform = "linux"
-pack_refs = ["linux-base", "linux-workload", "linux-process-metrics", "linux-ids", "linux-flow"]
-catalog_version = 26
-# 3：挂上 `linux-flow`（主机流记录；包与单元都是 draft，能力就绪后才展开）
-template_version = 3
+pack_refs = ["linux-base", "linux-workload", "linux-process-metrics", "linux-container-metrics", "linux-ids", "linux-flow"]
+catalog_version = 27
+# 4：挂上 `linux-container-metrics`（容器指标；单元带 `match`，没容器的机器不展开）
+template_version = 4
 status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-09-22T00:00:00Z"
@@ -58,10 +58,10 @@ curated_at = "2026-09-22T00:00:00Z"
 template_id = "linux-data"
 machine_class = "LinuxData"
 platform = "linux"
-pack_refs = ["linux-base", "linux-workload", "linux-datastore", "linux-messaging", "linux-process-metrics", "linux-ops-extra", "linux-ids", "linux-flow"]
-catalog_version = 26
-# 8：挂上 `linux-flow`（主机流记录；包与单元都是 draft，能力就绪后才展开）
-template_version = 8
+pack_refs = ["linux-base", "linux-workload", "linux-datastore", "linux-messaging", "linux-process-metrics", "linux-container-metrics", "linux-ops-extra", "linux-ids", "linux-flow"]
+catalog_version = 27
+# 9：挂上 `linux-container-metrics`（容器指标）
+template_version = 9
 status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-09-22T00:00:00Z"
@@ -75,12 +75,12 @@ machine_class = "LinuxHost"
 platform = "linux"
 # `linux-process-metrics` 在**基线主机**上也挂：关键进程是「主机普遍能力」（与容器 stdout 同理），
 # 不绑在「这台机器算什么用途」上；没装那些服务的机器由单元的 `match` 自己挡掉。
-pack_refs = ["linux-base", "linux-process-metrics", "linux-ids", "linux-flow"]
-catalog_version = 26
-# 3：挂上 `linux-flow`（主机流记录）。
-# 为什么 draft 包也挂：展开只取 active 单元，所以现在不会多出一项；现在挂是为了
+pack_refs = ["linux-base", "linux-process-metrics", "linux-container-metrics", "linux-ids", "linux-flow"]
+catalog_version = 27
+# 4：挂上 `linux-container-metrics`（容器指标；没容器的机器由单元 `match` 挡掉）
+# 为什么 draft 包也挂：展开只取 active 单元，现在不会多出一项；先挂上，
 # 「能力就绪 → 翻 active」时不必再改一轮模板版本。与 `linux-ids` 同构。
-template_version = 3
+template_version = 4
 status = "draft"
 curated_by = "platform-maintenance"
 curated_at = "2026-09-22T00:00:00Z"

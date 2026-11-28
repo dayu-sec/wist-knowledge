@@ -4,13 +4,18 @@
 用法：
     check_content_versions.py <上一版 manifest.json> <本版 manifest.json> [上一版 tag] [本版 tag]
 
-规则：五份策展数据里任何一份的 sha256 变了，它对应的版本号必须**严格变大**：
+规则：目录里任何一份**策展数据**的 sha256 变了，它对应的版本号必须**严格变大**：
 
     catalog.toml          → catalog_version
     packs.toml            → catalog_version   （包自身没有独立版本，随目录走）
     templates.toml        → template_version  （取最大值）
     purpose-rules.toml    → purpose_version
     aspect-policies.toml  → policy_version
+    exporters.toml        → exporters_version
+
+另外：manifest 里出现了**没登记版本键**的文件时直接判失败（退出码 1）。
+没登记就等于给这个文件留了「改了不用涨版本」的永久免检通道 ——
+这正是版本漂移最常见的入口，比单调性本身更该先挡住。
 
 为什么需要：包能打出来、网关也能装，所以漂移不会被任何一步挡住；但下游按
 `catalog_version` 判新旧、判回滚、锁 `StandingWork`，版本不动等于**两份不同内容
@@ -33,7 +38,19 @@ FILE_TO_KEY = {
     "templates.toml": "template_version",
     "purpose-rules.toml": "purpose_version",
     "aspect-policies.toml": "policy_version",
+    # 导出器运行参数（二进制搜索目录 / 周期 / 超时）：只影响“去哪找工具、多久跑一次”，
+    # 但同样是舰队级内容 —— 改了不涨版本，回滚就会回错东西。
+    "exporters.toml": "exporters_version",
 }
+
+# 包里有、但**不由内容版本键管**的文件：
+#
+#   * `manifest.json` —— 包自身的摘要（生成时 `files` 里还没有它，但历史手工包可能有）；
+#   * `compat.json` —— 组件版本 + 依赖区间，它的 `version` 必须等于 `version.txt`，
+#     由 `package.sh` 单独校验（与内容版本是两套轴）。
+#
+# 它俩被扫进来时不能判成“漏登记”：它们本来就不靠 `catalog_version` / `template_version` 这类键。
+NO_CONTENT_VERSION_FILES = {"manifest.json", "compat.json"}
 
 
 def load(path: str) -> dict:
@@ -68,6 +85,30 @@ def main(argv: list[str]) -> int:
 
     prev, new = load(prev_path), load(new_path)
     prev_files, new_files = prev.get("files") or {}, new.get("files") or {}
+
+    # 先查「这一版有没有文件没登记版本键」。它比单调性更基础：没登记的文件
+    # 根本进不了下面的逐项比较，等于被永久免检。
+    #
+    # 只查**本版**：上一版的历史缺口不该让今天的发版回溯失败 —— 缺口在
+    # 下一次打包时自然会被这里挡住。
+    unmapped = sorted(
+        name
+        for name in new_files
+        if name not in FILE_TO_KEY and name not in NO_CONTENT_VERSION_FILES
+    )
+    if unmapped:
+        print(
+            "::error::以下策展文件没有登记版本键，无法判定「内容变了版本要涨」："
+            + "、".join(unmapped),
+            file=sys.stderr,
+        )
+        print(
+            "  在 check_content_versions.py 的 FILE_TO_KEY 里登记（文件 → 版本键），"
+            "并在该文件里声明对应版本号；确实不需要版本的产物请显式说明。",
+            file=sys.stderr,
+        )
+        return 1
+
     if not prev_files:
         print(
             f"::warning::{prev_tag} 的 manifest 没有逐文件摘要（旧包），跳过单调性校验"

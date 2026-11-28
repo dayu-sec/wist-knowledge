@@ -13,14 +13,15 @@ wist 的**知识库**——网关装载后用于：采集单元 / 包 / 工作�
 | `purpose-rules.toml` | `[purpose] rules_file` | 用途推断规则 |
 | `aspect-policies.toml` | `[discovery] policies_file` | 发现方向策略（下发给 agent） |
 | `metrics-app-registry.toml` | `[metrics] registry_file` | `app` / `role` 推断的取值闭集（选择类 label） |
+| `exporters.toml` | 同 `catalog.toml` 目录（可选） | 导出器运行参数：二进制**搜索目录** + 周期 / 超时（网关 `POST /api/v1/agent/exporter-policy:poll` 下发） |
 
 > **采集面词表**：`catalog.toml` 的 `[[families]]` 是**运行期词表的唯一来源**（ID、平台归属、
 > 中英名称与说明）。网关从包装载它，新增面**不用发网关**；面元数据、采集能力契约、校验链、
 > 知识包发布/回退与新增面的标准流程，见
 > [`collection-family-capability-contract.md`](../../wist-design/doc/design/center/collection-family-capability-contract.md)。
 
-版本（各自在文件内声明）：`catalog_version = 23`（目录 / 包 / 模板）、`template_version = 1`、
-`policy_version = 1`（发现策略）、`purpose_version = 5`（用途规则）、
+版本（各自在文件内声明）：`catalog_version = 27`（目录 / 包 / 模板）、`template_version = 4`（`linux-host` / `linux-compute`；`linux-data` 是 9）、
+`policy_version = 1`（发现策略）、`purpose_version = 5`（用途规则）、`exporters_version = 1`（导出器运行参数）、
 `schema_version`（指标 label 注册表，见文件内声明）。**改内容要 bump 对应版本**——
 已授权的工作锁在它展开时那一版目录上（`standing_work.catalog_version`），换版不追改在跑的工作；
 用途规则那个版本是**建议的归因锚**（见网关侧 `docs/design/knowledge-content-management.md` §8.2）。
@@ -66,7 +67,7 @@ CI 把两个仓都 checkout 成网关仓的同级目录（见 `wist-gateway/.git
 
 产物（GitHub Release 附件 + workflow artifact，保留 7 天）：
 
-- `wist-knowledge-<version>.tar.gz` —— 顶层一层同名目录，内含五份数据 + `manifest.json`
+- `wist-knowledge-<version>.tar.gz` —— 顶层一层同名目录，内含六份数据 + `manifest.json`
   （`version` / `created_at` / `commit` / `content_versions` / 每份文件的 sha256）
 - `wist-knowledge-<version>.tar.gz.sha256`
 - `wist-knowledge-<version>.tar.gz.sig` —— **仅在 CI secret `KNOWLEDGE_SIGNING_KEY` 配了时**产出
@@ -104,7 +105,7 @@ openssl pkeyutl -verify -pubin -inkey keys/knowledge-signing.pub.pem \
 
 本地预览与自测：`./scripts/package.sh --dry-run`（版本取自 `version.txt`；显式传 `--version` 时
 **核心版本**必须与它相同，可带 `-alpha` / `-beta` 通道后缀）。CI（`ci.yml`）在三个分支上跑同一套门禁：
-`bash -n scripts/*.sh` + 试打包 + 五份 TOML 能解析。
+`bash -n scripts/*.sh` + 试打包 + 六份 TOML 能解析。
 
 为什么打成包、而不是让网关读本仓目录：形态对齐既有「Agent 安装包」——管理面录入 / 离线投放 /
 版本历史 / 内容寻址。**网关侧的导入流程还没做**（生效版本指针、签名、schema 兼容校验、旧版共存），

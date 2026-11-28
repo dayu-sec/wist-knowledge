@@ -1,0 +1,70 @@
+# 导出器运行参数（二进制**搜索目录** + 周期 / 超时）—— 内容数据
+#
+# ## 为什么这些值在知识库，而不在 agentd 里
+#
+# 工具的安装位置是**纯环境信息**：usrmerge / 非 usrmerge、busybox、最小容器镜像、
+# Homebrew、自建前缀……写死在 agentd 里，每遇到一种新环境就要发一版 agentd（root 守护进程、
+# 全舰队滚动），而它本该只是换一版数据。周期 / 超时同理：是策略，不是实现。
+#
+# ## 数据能改什么、不能改什么
+#
+# 能改：**去哪几个目录找**（`bin_dirs`）、**多久跑一次**（`period_secs` / `timeout_secs`）。
+# 不能改：**跑什么**。二进制名与参数登记在 agentd 代码里（`telemetry::exporters`），
+# 数据只能给目录 —— 解析规则永远是「候选目录 + 该 ID 登记的同名可执行文件」。
+# 这样知识库被换掉也不会变成“让全舰队执行任意命令”。
+#
+# ## 网关装载时会校验
+#
+# * `id` 必须在契约 `EXPORTER_IDS` 里（数据引入不了新的“命令”）；
+# * `bin_dirs` 必须是绝对路径、不含 `..`、且落在网关的系统目录白名单内；
+# * `period_secs` / `timeout_secs` 在上下界内。
+# 校验不过**整份拒载**（宁可不采，也不按半份坏策略跑）。
+#
+# ## agentd 拿不到怎么办
+#
+# 回落到代码内置的 `BIN_DIRS` / 默认周期（fail-safe：内置表已覆盖常见发行版）。
+# 旧网关没有这个端点（404）→ 静默用内置值，不告警。
+
+exporters_version = 1
+published_at = "2026-11-28T00:00:00Z"
+
+# ── 每个平台的二进制搜索目录（按优先级）─────────────────────────────
+#
+# 找一个「同名可执行文件」：`<dir>/<exporter 的 bin>`。**不走进程 PATH**
+# （root 守护进程里 PATH 解析是本地提权面），只搜这里列出的固定目录。
+#
+# 非 usrmerge 的发行版、busybox、最小容器镜像里，工具常常只在 `/bin`；
+# macOS 的 Homebrew 在 `/opt/homebrew/{bin,sbin}`（Apple Silicon）或 `/usr/local/{bin,sbin}`。
+[[platform]]
+platform = "linux"
+bin_dirs = [
+  "/usr/bin",
+  "/bin",
+  "/usr/sbin",
+  "/sbin",
+  "/usr/local/bin",
+  "/usr/local/sbin",
+]
+
+[[platform]]
+platform = "macos"
+bin_dirs = [
+  "/usr/bin",
+  "/bin",
+  "/usr/sbin",
+  "/sbin",
+  "/opt/homebrew/bin",
+  "/usr/local/bin",
+  "/opt/homebrew/sbin",
+  "/usr/local/sbin",
+]
+
+# ── 每个导出器的周期 / 超时覆盖（可选；缺省用 agentd 内置值）─────────
+#
+# 目前只用内置值，所以没有条目。需要调某个导出器的节奏（比如某现场
+# `journalctl -k` 太重、想从 60s 放宽到 120s）时在这里加一行：
+#
+#   [[exporter]]
+#   id = "kernel-log"
+#   period_secs = 120
+#   timeout_secs = 30
